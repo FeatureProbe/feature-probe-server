@@ -1,5 +1,11 @@
 # FeatureProbe Server
 
+[![Top Language](https://img.shields.io/github/languages/top/FeatureProbe/server-sdk-rust)](https://github.com/FeatureProbe/feature-probe-server/search?l=rust)
+[![codecov](https://codecov.io/gh/featureprobe/feature-probe-server/branch/main/graph/badge.svg?token=TAN3AU4CK2)](https://codecov.io/gh/featureprobe/feature-probe-serve)
+[![Github Star](https://img.shields.io/github/stars/FeatureProbe/server-sdk-rust)](https://github.com/FeatureProbe/server-sdk-rust/stargazers)
+[![Apache-2.0 license](https://img.shields.io/github/license/FeatureProbe/FeatureProbe)](https://github.com/FeatureProbe/FeatureProbe/blob/main/LICENSE)
+
+
 FeatureProbe Server(also called the Evaluation Server) is a key component to make the FeatureProbe service workable. 
 It provides toggle configurations and rules to the server-side SDKs, 
 and it provides evaluation results to the client-side SDKs.
