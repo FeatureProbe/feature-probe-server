@@ -1,5 +1,9 @@
-use crate::{base::ServerConfig, FPServerError};
-use feature_probe_server_sdk::{FPConfig, FPUser, FeatureProbe as FPClient, Segment, Toggle, Url};
+use crate::base::ServerConfig;
+#[cfg(feature = "unstable")]
+use crate::FPServerError;
+use feature_probe_server_sdk::{FPConfig, FPUser, FeatureProbe as FPClient, Url};
+#[cfg(feature = "unstable")]
+use feature_probe_server_sdk::{Segment, Toggle};
 use parking_lot::RwLock;
 use reqwest::Method;
 use serde::Deserialize;
@@ -35,6 +39,8 @@ impl SdkRepository {
             }),
         }
     }
+
+    #[cfg(feature = "unstable")]
     pub fn update_segments(&self, segments: HashMap<String, Segment>) -> Result<(), FPServerError> {
         // TODO: perf
         let mut sdks = self.inner.sdk_clients.write();
@@ -43,6 +49,7 @@ impl SdkRepository {
         Ok(())
     }
 
+    #[cfg(feature = "unstable")]
     pub fn update_toggles(
         &self,
         server_sdk_key: &str,
@@ -131,6 +138,7 @@ impl SdkRepository {
     }
 
     #[cfg(test)]
+    #[cfg(feature = "unstable")]
     fn sdk_client(&self, sdk_key: &str) -> Option<FPClient> {
         let sdk_clients = self.inner.sdk_clients.read();
         sdk_clients.get(sdk_key).map(|c| c.clone())
@@ -163,7 +171,10 @@ mod tests {
 
     use super::*;
     use axum::{routing::get, Json, Router, TypedHeader};
-    use feature_probe_server_sdk::{FPUser, Repository, SdkAuthorization};
+    #[cfg(feature = "unstable")]
+    use feature_probe_server_sdk::FPUser;
+    use feature_probe_server_sdk::{Repository, SdkAuthorization};
+    #[cfg(feature = "unstable")]
     use serde_json::json;
     use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
 
@@ -186,8 +197,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_toggles() {
+    async fn test_repo_sync2() {
         let port = 9591;
+        setup_mock_api(port);
+        let client_sdk_key = "client-sdk-key".to_owned();
+        let server_sdk_key = "server-sdk-key".to_owned();
+        let repository = setup_repository2(port).await;
+
+        let repo_string = repository.server_sdk_repo_string(&server_sdk_key);
+        assert!(repo_string.is_some());
+        let r = serde_json::from_str::<Repository>(&repo_string.unwrap()).unwrap();
+        assert!(r == repo_from_test_file());
+
+        let secret_keys = repository.secret_keys();
+        assert!(secret_keys.len() == 1);
+        assert!(secret_keys.get(&client_sdk_key) == Some(&server_sdk_key));
+    }
+
+    #[cfg(feature = "unstable")]
+    #[tokio::test]
+    async fn test_update_toggles() {
+        let port = 9592;
         setup_mock_api(port);
 
         let server_sdk_key = "sdk-key1".to_owned();
@@ -233,14 +263,41 @@ mod tests {
         repo
     }
 
+    async fn setup_repository2(port: u16) -> SdkRepository {
+        let toggles_url =
+            Url::parse(&format!("http://127.0.0.1:{}/api/server-sdk/toggles", port)).unwrap();
+        let events_url = Url::parse(&format!("http://127.0.0.1:{}/api/events", port)).unwrap();
+        let keys_url = Url::parse(&format!("http://127.0.0.1:{}/api/secret-keys", port)).unwrap();
+        let repo = SdkRepository::new(ServerConfig {
+            toggles_url,
+            events_url,
+            refresh_interval: Duration::from_millis(10),
+            client_sdk_key: None,
+            server_sdk_key: None,
+            keys_url: Some(keys_url.clone()),
+            server_port: port,
+        });
+        repo.sync_with(keys_url);
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        repo
+    }
+
     async fn server_sdk_toggles(
         TypedHeader(SdkAuthorization(_sdk_key)): TypedHeader<SdkAuthorization>,
     ) -> Json<Repository> {
         repo_from_test_file().into()
     }
 
+    async fn secret_keys() -> String {
+        r#"
+{ "mapping": { "client-sdk-key": "server-sdk-key" } }"#
+            .to_owned()
+    }
+
     fn setup_mock_api(port: u16) {
-        let app = Router::new().route("/api/server-sdk/toggles", get(server_sdk_toggles));
+        let app = Router::new()
+            .route("/api/secret-keys", get(secret_keys))
+            .route("/api/server-sdk/toggles", get(server_sdk_toggles));
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
         tokio::spawn(async move {
             let _ = axum::Server::bind(&addr)
@@ -256,6 +313,7 @@ mod tests {
         serde_json::from_str::<Repository>(&json_str).unwrap()
     }
 
+    #[cfg(feature = "unstable")]
     fn update_toggles_from_file() -> HashMap<String, HashMap<String, Toggle>> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("resources/fixtures/toggles_update.json");

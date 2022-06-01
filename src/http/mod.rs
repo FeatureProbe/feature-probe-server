@@ -13,7 +13,9 @@ use reqwest::header;
 
 use crate::FPServerError;
 use feature_probe_event::collector::{post_events, EventHandler};
-use feature_probe_server_sdk::{SdkAuthorization, Segment, Toggle};
+use feature_probe_server_sdk::SdkAuthorization;
+#[cfg(feature = "unstable")]
+use feature_probe_server_sdk::{Segment, Toggle};
 pub use handler::{FpHttpHandler, HttpHandler, LocalFileHttpHandler};
 use serde::Deserialize;
 use serde_json::json;
@@ -31,13 +33,16 @@ where
             get(client_sdk_toggles::<T>).options(client_cors),
         )
         .route("/api/server-sdk/toggles", get(server_sdk_toggles::<T>))
-        .route("/api/server/toggles", post(update_toggles::<T>))
-        .route("/api/server/segments", post(update_segments::<T>))
-        .route("/api/server/check_secrets", post(check_secrets::<T>))
-        .route("/internal/all_secrets", get(all_secrets::<T>)) // not for public network
         .route("/api/events", post(post_events::<T>))
+        .route("/internal/all_secrets", get(all_secrets::<T>)) // not for public network
         .layer(Extension(handler))
         .fallback(handler_404.into_service());
+
+    #[cfg(feature = "unstable")]
+    let app = app
+        .route("/api/server/toggles", post(update_toggles::<T>))
+        .route("/api/server/segments", post(update_segments::<T>))
+        .route("/api/server/check_secrets", post(check_secrets::<T>));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     axum::Server::bind(&addr)
@@ -71,6 +76,7 @@ where
     handler.server_sdk_toggles(sdk_key).await
 }
 
+#[cfg(feature = "unstable")]
 async fn update_toggles<T>(
     params: Json<ToggleUpdateParams>,
     Extension(handler): Extension<T>,
@@ -81,6 +87,7 @@ where
     handler.update_toggles(params).await
 }
 
+#[cfg(feature = "unstable")]
 async fn update_segments<T>(
     params: Json<SegmentUpdateParams>,
     Extension(handler): Extension<T>,
@@ -91,6 +98,7 @@ where
     handler.update_segments(params).await
 }
 
+#[cfg(feature = "unstable")]
 async fn check_secrets<T>(
     params: Json<SecretsParams>,
     Extension(handler): Extension<T>,
@@ -123,17 +131,20 @@ pub struct ClientParams {
     user: String,
 }
 
+#[cfg(feature = "unstable")]
 #[derive(Debug, Deserialize)]
 pub struct ToggleUpdateParams {
     sdk_key: String,
     toggles: HashMap<String, Toggle>,
 }
 
+#[cfg(feature = "unstable")]
 #[derive(Debug, Deserialize)]
 pub struct SegmentUpdateParams {
     segments: HashMap<String, Segment>,
 }
 
+#[cfg(feature = "unstable")]
 #[derive(Debug, Deserialize)]
 pub struct SecretsParams {
     _secrets: HashMap<String, String>,
@@ -183,8 +194,7 @@ mod tests {
         let client_sdk_key = "client-sdk-key1".to_owned();
         let mock_api_port = 9002;
         let fp_server_port = 9003;
-        setup_mock_api(mock_api_port);
-        tokio::time::sleep(Duration::from_millis(100)).await; // wait mock api port listen
+        setup_mock_api(mock_api_port).await;
         let repo = setup_fp_server(
             mock_api_port,
             fp_server_port,
@@ -246,8 +256,7 @@ mod tests {
         let client_sdk_key = "client-sdk-key1".to_owned();
         let mock_api_port = 9005;
         let fp_server_port = 9006;
-        setup_mock_api(mock_api_port);
-        tokio::time::sleep(Duration::from_millis(100)).await; // wait mock api port listen
+        setup_mock_api(mock_api_port).await;
         let _ = setup_fp_server(
             mock_api_port,
             fp_server_port,
@@ -300,12 +309,13 @@ mod tests {
         serde_json::from_str::<Repository>(&json_str).unwrap()
     }
 
-    fn setup_mock_api(port: u16) {
+    async fn setup_mock_api(port: u16) {
         let mock_feature_probe_api = LocalFileHttpHandler {};
         tokio::spawn(crate::http::serve_http::<LocalFileHttpHandler>(
             port,
             mock_feature_probe_api,
         ));
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 
     async fn setup_fp_server(

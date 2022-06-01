@@ -13,6 +13,9 @@ path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+unstable = []
+
 [dependencies]
 anyhow = "1.0"
 axum = { version = "0.5", features = ["headers"] }

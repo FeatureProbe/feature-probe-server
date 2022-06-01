@@ -1,7 +1,6 @@
-use super::{
-    cors_headers, ClientParams, SdkAuthorization, SecretsParams, SegmentUpdateParams,
-    ToggleUpdateParams,
-};
+use super::{cors_headers, ClientParams, SdkAuthorization};
+#[cfg(feature = "unstable")]
+use super::{SecretsParams, SegmentUpdateParams, ToggleUpdateParams};
 use crate::{repo::SdkRepository, FPServerError};
 use axum::{
     async_trait,
@@ -41,16 +40,19 @@ pub trait HttpHandler {
         TypedHeader(SdkAuthorization(sdk_key)): TypedHeader<SdkAuthorization>,
     ) -> Result<Response, FPServerError>;
 
+    #[cfg(feature = "unstable")]
     async fn update_toggles(
         &self,
         Json(params): Json<ToggleUpdateParams>,
     ) -> Result<Response, FPServerError>;
 
+    #[cfg(feature = "unstable")]
     async fn update_segments(
         &self,
         Json(params): Json<SegmentUpdateParams>,
     ) -> Result<Response, FPServerError>;
 
+    #[cfg(feature = "unstable")]
     async fn check_secrets(
         &self,
         Json(_params): Json<SecretsParams>,
@@ -99,6 +101,7 @@ impl HttpHandler for FpHttpHandler {
         }
     }
 
+    #[cfg(feature = "unstable")]
     async fn update_toggles(
         &self,
         Json(params): Json<ToggleUpdateParams>,
@@ -107,6 +110,7 @@ impl HttpHandler for FpHttpHandler {
         let status = StatusCode::OK;
         Ok(status.into_response())
     }
+    #[cfg(feature = "unstable")]
 
     async fn update_segments(
         &self,
@@ -118,6 +122,7 @@ impl HttpHandler for FpHttpHandler {
         Ok((status, body).into_response())
     }
 
+    #[cfg(feature = "unstable")]
     async fn check_secrets(
         &self,
         Json(_params): Json<SecretsParams>,
@@ -202,6 +207,7 @@ impl HttpHandler for LocalFileHttpHandler {
             .into_response())
     }
 
+    #[cfg(feature = "unstable")]
     async fn update_toggles(
         &self,
         Json(_params): Json<ToggleUpdateParams>,
@@ -211,6 +217,7 @@ impl HttpHandler for LocalFileHttpHandler {
         Ok((status, body).into_response())
     }
 
+    #[cfg(feature = "unstable")]
     async fn update_segments(
         &self,
         Json(_params): Json<SegmentUpdateParams>,
@@ -220,6 +227,7 @@ impl HttpHandler for LocalFileHttpHandler {
         Ok((status, body).into_response())
     }
 
+    #[cfg(feature = "unstable")]
     async fn check_secrets(
         &self,
         Json(_params): Json<SecretsParams>,
