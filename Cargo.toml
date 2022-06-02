@@ -2,6 +2,9 @@
 edition = "2021"
 name = "feature-probe-server"
 version = "1.0.1"
+license = "Apache-2.0"
+authors = ["maintain@featureprobe.com"]
+description = "FeatureProbe Server for evaluating feature toggles"
 
 [[bin]]
 name = "feature_probe_server"
