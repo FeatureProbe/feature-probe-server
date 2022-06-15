@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
 async fn start(server_config: ServerConfig) -> Result<()> {
     let _ = tracing_subscriber::fmt()
-        .with_env_filter("feature_probe_server_sdk=trace,feature_probe_server=trace")
+        .with_env_filter("feature_probe_server_sdk=info,feature_probe_server=info")
         .init();
 
     let server_port = server_config.server_port;
