@@ -59,7 +59,6 @@
                     "conditions": [
                         {
                             "type": "segment",
-                            "subject": "user",
                             "predicate": "in",
                             "object": [
                                 "some_segment1-fjoaefjaam"
