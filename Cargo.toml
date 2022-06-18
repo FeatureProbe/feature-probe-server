@@ -37,7 +37,7 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 url = "2.2"
 
-feature-probe-server-sdk = { version = "1.0.2",  features = ["internal", "use_tokio"], default-features = false }
+feature-probe-server-sdk = { version = "1.0.3",  features = ["internal", "use_tokio"], default-features = false }
 feature-probe-event = { version = "1.0.2", features = ["use_tokio", "collector"], default-features = false }
 
 [dev-dependencies]
