@@ -1,8 +1,15 @@
-use std::time::Duration;
-
 use feature_probe_server_sdk::Url;
 use serde::Deserialize;
+use std::time::Duration;
 use thiserror::Error;
+use tracing_core::{Event, Subscriber};
+use tracing_log::NormalizeEvent;
+use tracing_subscriber::fmt::{
+    format::{self, FormatEvent, FormatFields},
+    time::{FormatTime, SystemTime},
+    FmtContext,
+};
+use tracing_subscriber::registry::LookupSpan;
 
 #[derive(Debug, Error, Deserialize)]
 pub enum FPServerError {
@@ -110,5 +117,52 @@ impl ServerConfig {
             server_sdk_key,
             server_port,
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct LogFormatter<T = SystemTime> {
+    timer: T,
+}
+
+impl<T2> LogFormatter<T2>
+where
+    T2: FormatTime,
+{
+    #[allow(dead_code)]
+    pub fn with_timer(timer: T2) -> Self {
+        LogFormatter { timer }
+    }
+}
+
+impl<C, N, T> FormatEvent<C, N> for LogFormatter<T>
+where
+    C: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+    T: FormatTime,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, C, N>,
+        mut writer: format::Writer<'_>,
+        event: &Event<'_>,
+    ) -> std::fmt::Result {
+        let normalized = event.normalized_metadata();
+        let meta = normalized.as_ref().unwrap_or_else(|| event.metadata());
+        write!(writer, "[{}][", meta.level())?;
+        if self.timer.format_time(&mut writer).is_err() {
+            write!(writer, "<unknown time>")?;
+        }
+        write!(writer, "]")?;
+        if let Some(m) = meta.module_path() {
+            write!(writer, "[{}", m)?;
+        }
+        if let Some(l) = meta.line() {
+            write!(writer, ":{}", l)?;
+        }
+        write!(writer, "]")?;
+
+        ctx.field_format().format_fields(writer.by_ref(), event)?;
+        writeln!(writer)
     }
 }

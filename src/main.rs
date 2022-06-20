@@ -1,12 +1,19 @@
 use crate::base::ServerConfig;
 use crate::repo::SdkRepository;
 use anyhow::{bail, Result};
-pub use axum::async_trait;
-pub use base::FPServerError;
+use base::FPServerError;
+use base::LogFormatter;
 use config::builder::DefaultState;
 use config::{Config, ConfigBuilder};
 use http::FpHttpHandler;
 use std::sync::Arc;
+use time::macros::format_description;
+use time::UtcOffset;
+use tracing_subscriber::fmt::layer;
+use tracing_subscriber::fmt::time::{OffsetTime, SystemTime};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
 mod base;
 mod http;
@@ -26,10 +33,7 @@ async fn main() -> Result<()> {
 }
 
 async fn start(server_config: ServerConfig) -> Result<()> {
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter("feature_probe_server_sdk=info,feature_probe_server=info")
-        .init();
-
+    init_log();
     let server_port = server_config.server_port;
     let handler = match init_handler(server_config) {
         Ok(h) => h,
@@ -79,6 +83,25 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
         events_url: server_config.events_url,
         events_timeout: server_config.refresh_interval,
     })
+}
+
+pub fn init_log() {
+    let _ = tracing_subscriber::fmt();
+    let subscriber = tracing_subscriber::registry().with(EnvFilter::from_default_env());
+
+    if let Ok(offset) = UtcOffset::current_local_offset() {
+        let format = format_description!(
+            "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3][offset_hour sign:mandatory][offset_minute]"
+        );
+        let timer = OffsetTime::new(offset, format);
+        subscriber
+            .with(layer().event_format(LogFormatter::with_timer(timer)))
+            .init();
+    } else {
+        subscriber
+            .with(layer().event_format(LogFormatter::with_timer(SystemTime)))
+            .init();
+    }
 }
 
 #[cfg(test)]
