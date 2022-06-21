@@ -40,7 +40,7 @@ jobs:
             --platform linux/amd64 \
             --output "type=image,push=true" \
             --tag featureprobe/server:latest \
-            --tag featureprobe/server: ${{ steps.meta.outputs.tags }} \
+            --tag featureprobe/server:${GITHUB_REF#refs/tags/} \
             --file ./Dockerfile ./
       -
         name: Inspect image
