@@ -135,6 +135,7 @@ mod tests {
 
         let server_config = server_config.unwrap();
         let r = start(server_config).await;
+        log::info!("test_main"); // trigger log format
         assert!(r.is_ok());
     }
 

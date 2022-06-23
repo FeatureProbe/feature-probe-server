@@ -289,9 +289,7 @@ mod tests {
     }
 
     async fn secret_keys() -> String {
-        r#"
-{ "mapping": { "client-sdk-key": "server-sdk-key" } }"#
-            .to_owned()
+        r#" { "mapping": { "client-sdk-key": "server-sdk-key" } }"#.to_owned()
     }
 
     fn setup_mock_api(port: u16) {

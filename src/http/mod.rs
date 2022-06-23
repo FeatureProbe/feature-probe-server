@@ -184,6 +184,7 @@ mod tests {
     use crate::{base::ServerConfig, repo::SdkRepository};
     use axum::http::StatusCode;
     use feature_probe_server_sdk::{FPDetail, FPUser, Repository, SdkAuthorization};
+    use reqwest::header::CONTENT_TYPE;
     use reqwest::{header::AUTHORIZATION, Client, Error, Method, Url};
     use serde_json::Value;
     use std::{fs, path::PathBuf, sync::Arc, time::Duration};
@@ -208,7 +209,7 @@ mod tests {
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/api/server-sdk/toggles", fp_server_port),
-            server_sdk_key.clone(),
+            Some(server_sdk_key.clone()),
         )
         .await;
         assert!(resp.is_ok());
@@ -220,12 +221,26 @@ mod tests {
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/api/server-sdk/toggles", fp_server_port),
-            "no_exist_server_key".to_owned(),
+            Some("no_exist_server_key".to_owned()),
         )
         .await;
         assert!(resp.is_ok());
         let resp = resp.unwrap();
         assert!(resp.status() == StatusCode::NOT_FOUND);
+
+        let resp = http_get(
+            format!("http://127.0.0.1:{}/internal/all_secrets", fp_server_port),
+            None,
+        )
+        .await;
+        assert!(resp.is_ok());
+
+        let resp = http_get(
+            format!("http://127.0.0.1:{}/internal/all_secrets", mock_api_port),
+            None,
+        )
+        .await;
+        assert!(resp.is_ok());
     }
 
     #[tokio::test]
@@ -239,7 +254,7 @@ mod tests {
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/api/server-sdk/toggles", port),
-            "sdk-key".to_owned(),
+            Some("sdk-key".to_owned()),
         )
         .await;
         assert!(resp.is_ok(), "response invalid");
@@ -274,7 +289,7 @@ mod tests {
                 "http://127.0.0.1:{}/api/client-sdk/toggles?user={}",
                 fp_server_port, user_base64
             ),
-            client_sdk_key.clone(),
+            Some(client_sdk_key.clone()),
         )
         .await;
         assert!(resp.is_ok(), "response invalid");
@@ -289,16 +304,82 @@ mod tests {
         let t = t.unwrap();
         assert_eq!(t.rule_index, Some(0));
         assert_eq!(t.value.as_bool(), Some(true));
+
+        // for test coverage
+        let resp = http_get(
+            format!(
+                "http://127.0.0.1:{}/api/client-sdk/toggles?user={}",
+                mock_api_port, user_base64
+            ),
+            Some(client_sdk_key.clone()),
+        )
+        .await;
+        assert!(resp.is_ok())
     }
 
-    async fn http_get(url: String, sdk_key: String) -> Result<reqwest::Response, Error> {
-        let toggles_url = Url::parse(&url).unwrap();
+    #[tokio::test]
+    async fn test_events() {
+        let server_sdk_key = "server-sdk-key1".to_owned();
+        let client_sdk_key = "client-sdk-key1".to_owned();
+        let mock_api_port = 9007;
+        let fp_server_port = 9008;
+        setup_mock_api(mock_api_port).await;
+        let _ = setup_fp_server(
+            mock_api_port,
+            fp_server_port,
+            &client_sdk_key,
+            &server_sdk_key,
+        )
+        .await;
+        tokio::time::sleep(Duration::from_millis(100)).await; // wait fp server port listen
+
+        let resp = http_post(
+            format!("http://127.0.0.1:{}/api/events", fp_server_port),
+            Some(client_sdk_key.clone()),
+            "[]".to_owned(),
+        )
+        .await;
+        assert!(resp.is_ok());
+
+        let resp = http_post(
+            format!("http://127.0.0.1:{}/api/events", mock_api_port),
+            Some(client_sdk_key.clone()),
+            "[]".to_owned(),
+        )
+        .await;
+        assert!(resp.is_ok());
+    }
+
+    async fn http_get(url: String, sdk_key: Option<String>) -> Result<reqwest::Response, Error> {
+        let url = Url::parse(&url).unwrap();
         let timeout = Duration::from_secs(1);
-        let auth = SdkAuthorization(sdk_key).encode();
-        let request = Client::new()
-            .request(Method::GET, toggles_url)
-            .header(AUTHORIZATION, auth)
-            .timeout(timeout);
+        let mut request = Client::new().request(Method::GET, url);
+
+        if let Some(sdk_key) = sdk_key {
+            let auth = SdkAuthorization(sdk_key).encode();
+            request = request.header(AUTHORIZATION, auth);
+        }
+        request = request.timeout(timeout);
+        request.send().await
+    }
+
+    async fn http_post(
+        url: String,
+        sdk_key: Option<String>,
+        body: String,
+    ) -> Result<reqwest::Response, Error> {
+        let url = Url::parse(&url).unwrap();
+        let timeout = Duration::from_secs(1);
+        let mut request = Client::new()
+            .request(Method::POST, url)
+            .header(CONTENT_TYPE, "application/json")
+            .body(body);
+
+        if let Some(sdk_key) = sdk_key {
+            let auth = SdkAuthorization(sdk_key).encode();
+            request = request.header(AUTHORIZATION, auth);
+        }
+        request = request.timeout(timeout);
         request.send().await
     }
 

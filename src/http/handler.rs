@@ -239,7 +239,9 @@ impl HttpHandler for LocalFileHttpHandler {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("resources/fixtures/secrets.json");
         let json_str = fs::read_to_string(path).unwrap();
-        let secret_keys = serde_json::from_str::<HashMap<String, String>>(&json_str).unwrap();
+        let secret_keys =
+            serde_json::from_str::<HashMap<String, HashMap<String, String>>>(&json_str).unwrap();
+        let secret_keys = secret_keys.get("mapping").unwrap().to_owned();
         Ok(secret_keys.into())
     }
 }
