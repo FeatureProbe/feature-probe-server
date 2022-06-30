@@ -15,7 +15,7 @@ use feature_probe_event::{
 };
 use feature_probe_server_sdk::{FPUser, Url};
 use reqwest::{
-    header::{self, AUTHORIZATION},
+    header::{self, AUTHORIZATION, USER_AGENT},
     Client, Method,
 };
 use std::{
@@ -141,6 +141,7 @@ impl EventHandler for FpHttpHandler {
     async fn handle_events(
         &self,
         sdk_key: String,
+        user_agent: String,
         data: VecDeque<PackedData>,
     ) -> Result<Response, FPEventError> {
         let http_client = self.http_client.clone();
@@ -151,6 +152,7 @@ impl EventHandler for FpHttpHandler {
             let request = http_client
                 .request(Method::POST, events_url.clone())
                 .header(AUTHORIZATION, auth)
+                .header(USER_AGENT, user_agent)
                 .timeout(timeout)
                 .json(&data);
             match request.send().await {
@@ -251,6 +253,7 @@ impl EventHandler for LocalFileHttpHandler {
     async fn handle_events(
         &self,
         _sdk_key: String,
+        _user_agent: String,
         _data: VecDeque<PackedData>,
     ) -> Result<Response, FPEventError> {
         Ok((StatusCode::OK, cors_headers(), "").into_response())
