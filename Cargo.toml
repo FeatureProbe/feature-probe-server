@@ -40,7 +40,7 @@ tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
 url = "2.2"
 
-feature-probe-server-sdk = { version = "1.0.4",  features = ["internal", "use_tokio"], default-features = false }
+feature-probe-server-sdk = { version = "1.0.5",  features = ["internal", "use_tokio"], default-features = false }
 feature-probe-event = { version = "1.0.4", features = ["use_tokio", "collector"], default-features = false }
 
 [dev-dependencies]
