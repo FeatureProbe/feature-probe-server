@@ -157,10 +157,10 @@ impl EventHandler for FpHttpHandler {
                 .json(&data);
             match request.send().await {
                 Err(e) => error!("event post error: {}", e),
-                Ok(r) => debug!("{:?}", r),
+                Ok(r) => debug!("event post success: {:?} {:?}", data, r),
             };
         });
-        Ok((StatusCode::OK, cors_headers(), "").into_response())
+        Ok((StatusCode::OK, cors_headers(), "{}").into_response())
     }
 }
 
