@@ -348,7 +348,7 @@ dependencies = [
 
 [[package]]
 name = "feature-probe-server"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "axum",
@@ -376,9 +376,9 @@ dependencies = [
 
 [[package]]
 name = "feature-probe-server-sdk"
-version = "1.0.5"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ca9e129fef1e9741424c2087da8394dd26f41aba99f14263b81b64daf280460"
+checksum = "7dde1d33077aab767578f7721272ce2058ae1fc6a1a637810c390b9d227e7d1c"
 dependencies = [
  "anyhow",
  "byteorder",
