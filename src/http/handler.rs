@@ -166,9 +166,12 @@ impl EventHandler for FpHttpHandler {
                 .headers(headers)
                 .timeout(timeout)
                 .json(&data);
+
+            debug!("event post req: {:?}", request);
+
             match request.send().await {
                 Err(e) => error!("event post error: {}", e),
-                Ok(r) => debug!("event post success: {:?} {:?}", data, r),
+                Ok(r) => debug!("event post success: {:?}", r),
             };
         });
         Ok((StatusCode::OK, cors_headers(), "{}").into_response())
