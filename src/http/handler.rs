@@ -5,7 +5,7 @@ use crate::{repo::SdkRepository, FPServerError};
 use axum::{
     async_trait,
     extract::Query,
-    http::StatusCode,
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json, TypedHeader,
 };
@@ -142,17 +142,28 @@ impl EventHandler for FpHttpHandler {
         &self,
         sdk_key: String,
         user_agent: String,
+        headers: HeaderMap,
         data: VecDeque<PackedData>,
     ) -> Result<Response, FPEventError> {
         let http_client = self.http_client.clone();
         let events_url = self.events_url.clone();
         let timeout = self.events_timeout;
         tokio::spawn(async move {
+            let ua = headers.get("ua");
             let auth = SdkAuthorization(sdk_key).encode();
+            let mut headers = HeaderMap::with_capacity(3);
+            headers.append(AUTHORIZATION, auth);
+            if let Ok(v) = HeaderValue::from_str(&user_agent) {
+                headers.append(USER_AGENT, v);
+            }
+
+            if let Some(ua) = ua {
+                headers.append("ua", ua.clone());
+            }
+
             let request = http_client
                 .request(Method::POST, events_url.clone())
-                .header(AUTHORIZATION, auth)
-                .header(USER_AGENT, user_agent)
+                .headers(headers)
                 .timeout(timeout)
                 .json(&data);
             match request.send().await {
@@ -254,6 +265,7 @@ impl EventHandler for LocalFileHttpHandler {
         &self,
         _sdk_key: String,
         _user_agent: String,
+        _headers: HeaderMap,
         _data: VecDeque<PackedData>,
     ) -> Result<Response, FPEventError> {
         Ok((StatusCode::OK, cors_headers(), "").into_response())

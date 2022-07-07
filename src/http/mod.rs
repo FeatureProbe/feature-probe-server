@@ -373,6 +373,8 @@ mod tests {
         let mut request = Client::new()
             .request(Method::POST, url)
             .header(CONTENT_TYPE, "application/json")
+            .header("user-agent", "Rust/0.0.0")
+            .header("ua", "Rust/0.0.0")
             .body(body);
 
         if let Some(sdk_key) = sdk_key {
