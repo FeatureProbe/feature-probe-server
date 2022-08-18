@@ -33,7 +33,7 @@ where
             get(client_sdk_toggles::<T>).options(client_cors),
         )
         .route("/api/server-sdk/toggles", get(server_sdk_toggles::<T>))
-        .route("/api/events", post(post_events::<T>))
+        .route("/api/events", post(post_events::<T>).options(client_cors))
         .route("/internal/all_secrets", get(all_secrets::<T>)) // not for public network
         .layer(Extension(handler))
         .fallback(handler_404.into_service());
