@@ -5,6 +5,7 @@
 [![Github Star](https://img.shields.io/github/stars/FeatureProbe/server-sdk-rust)](https://github.com/FeatureProbe/server-sdk-rust/stargazers)
 [![Apache-2.0 license](https://img.shields.io/github/license/FeatureProbe/FeatureProbe)](https://github.com/FeatureProbe/FeatureProbe/blob/main/LICENSE)
 
+## [中文文档](https://docs.featureprobe.io/zh-CN/)
 
 FeatureProbe Server(also called the Evaluation Server) is a key component to make the FeatureProbe service workable. 
 It provides toggle configurations and rules to the server-side SDKs, 
