@@ -378,9 +378,9 @@ dependencies = [
 
 [[package]]
 name = "feature-probe-server-sdk"
-version = "1.1.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dde1d33077aab767578f7721272ce2058ae1fc6a1a637810c390b9d227e7d1c"
+checksum = "533b097e2056294baa2d06adbdccdd22d8b1ae62dd9c975916d99a0b586f773f"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -783,6 +783,7 @@ checksum = "327fa5b6a6940e4699ec49a9beae1ea4845c6bab9314e4f84ac68742139d8c53"
 dependencies = [
  "autocfg",
  "scopeguard",
+ "serde",
 ]
 
 [[package]]
