@@ -159,8 +159,10 @@ impl Inner {
                 ..Default::default()
             };
             match FPClient::new(config) {
-                Err(e) => return error!("sync error: {}", e),
-                Ok(sdk) => sdks.insert(server_sdk_key.to_owned(), sdk),
+                Err(e) => error!("sync error: {}", e),
+                Ok(sdk) => {
+                    let _ = sdks.insert(server_sdk_key.to_owned(), sdk);
+                }
             };
         }
     }
@@ -227,7 +229,7 @@ mod tests {
         assert!(client.is_some());
 
         let client = client.unwrap();
-        let user = FPUser::new("some_key").with("city", "4");
+        let user = FPUser::new().with("city", "4");
         let default: HashMap<String, String> = HashMap::default();
         let v = client.json_value("json_toggle", &user, json!(default));
         assert!(v.get("variation_1").is_some());

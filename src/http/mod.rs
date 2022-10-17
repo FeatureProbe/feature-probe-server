@@ -281,7 +281,7 @@ mod tests {
         .await;
         tokio::time::sleep(Duration::from_millis(100)).await; // wait fp server port listen
 
-        let user = FPUser::new("some-key").with("city", "1");
+        let user = FPUser::new().with("city", "1");
         let user_json = serde_json::to_string(&user).unwrap();
         let user_base64 = base64::encode(&user_json);
         let resp = http_get(
