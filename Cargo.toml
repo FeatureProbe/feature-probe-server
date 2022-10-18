@@ -41,7 +41,7 @@ tracing-core = "0.1"
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
 url = "2.3"
-
+socketio-rs = { git = "https://github.com/socket-iox/socket-io.git" }
 feature-probe-server-sdk = { version = "1.2.2", features = [
   "internal",
   "use_tokio",

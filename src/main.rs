@@ -18,6 +18,7 @@ use tracing_subscriber::EnvFilter;
 mod base;
 mod http;
 mod repo;
+mod socketio;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -45,6 +46,8 @@ async fn start(server_config: ServerConfig) -> Result<()> {
         server_port,
         handler,
     ));
+
+    tokio::spawn(crate::socketio::serve_socketio());
     Ok(())
 }
 
