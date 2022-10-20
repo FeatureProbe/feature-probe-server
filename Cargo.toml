@@ -5,6 +5,7 @@ version = "1.2.1"
 license = "Apache-2.0"
 authors = ["maintain@featureprobe.com"]
 description = "FeatureProbe Server for evaluating feature toggles"
+build = "build.rs"
 
 [[bin]]
 name = "feature_probe_server"
@@ -18,6 +19,9 @@ path = "src/lib.rs"
 
 [features]
 unstable = []
+
+[build-dependencies]
+vergen = "7"
 
 [dependencies]
 anyhow = "1.0"
@@ -39,7 +43,10 @@ time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 tracing = "0.1"
 tracing-core = "0.1"
 tracing-log = "0.1"
-tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
+tracing-subscriber = { version = "0.3", features = [
+  "local-time",
+  "env-filter",
+] }
 url = "2.3"
 
 feature-probe-server-sdk = { version = "1.2.2", features = [

@@ -1,6 +1,6 @@
 use feature_probe_server_sdk::Url;
 use serde::Deserialize;
-use std::time::Duration;
+use std::{fmt::Display, time::Duration};
 use thiserror::Error;
 use tracing_core::{Event, Subscriber};
 use tracing_log::NormalizeEvent;
@@ -117,6 +117,24 @@ impl ServerConfig {
             server_sdk_key,
             server_port,
         })
+    }
+}
+
+impl Display for ServerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let keys_url = match &self.keys_url {
+            None => "None".to_owned(),
+            Some(s) => s.to_string(),
+        };
+        write!(f, "server_port {}, toggles_url {}, events_url {}, keys_url {}, refresh_interval {:?}, client_sdk_key {:?}, server_sdk_key {:?}",
+            self.server_port,
+            self.toggles_url,
+            self.events_url,
+            keys_url,
+            self.refresh_interval,
+            self.client_sdk_key,
+            self.server_sdk_key,
+        )
     }
 }
 

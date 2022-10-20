@@ -9,6 +9,7 @@ use http::FpHttpHandler;
 use std::sync::Arc;
 use time::macros::format_description;
 use time::UtcOffset;
+use tracing::error;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::fmt::time::{OffsetTime, SystemTime};
 use tracing_subscriber::layer::SubscriberExt;
@@ -34,6 +35,20 @@ async fn main() -> Result<()> {
 
 async fn start(server_config: ServerConfig) -> Result<()> {
     init_log();
+    error!("FeatureProbe Server Commit: {}", env!("VERGEN_GIT_SHA"));
+    error!(
+        "FeatureProbe Server BuildTs: {}",
+        env!("VERGEN_BUILD_TIMESTAMP")
+    );
+    error!(
+        "FeatureProbe Server CommitTs: {}",
+        env!("VERGEN_GIT_COMMIT_TIMESTAMP")
+    );
+    error!(
+        "FeatureProbe Server Cargo Profile: {}",
+        env!("VERGEN_CARGO_PROFILE")
+    );
+    error!("FeatureProbe Server Config: {}", server_config);
     let server_port = server_config.server_port;
     let handler = match init_handler(server_config) {
         Ok(h) => h,
