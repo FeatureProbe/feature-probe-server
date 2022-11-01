@@ -228,11 +228,7 @@ mod tests {
         assert!(body.is_ok());
         let body = body.unwrap();
         let r = serde_json::from_str::<Repository>(&body).unwrap();
-        let default_repo = Repository {
-            version: Some(0),
-            ..Default::default()
-        };
-        assert_eq!(r, default_repo);
+        assert_eq!(r, Repository::default());
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/internal/all_secrets", fp_server_port),

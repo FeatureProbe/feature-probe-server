@@ -90,18 +90,12 @@ impl HttpHandler for FpHttpHandler {
                     "{}",
                 )
                     .into_response()),
-                NotFound(_) => {
-                    let empty_repo = Repository {
-                        version: Some(0),
-                        ..Default::default()
-                    };
-                    Ok((
-                        StatusCode::OK,
-                        [(header::CONTENT_TYPE, "application/json")],
-                        serde_json::to_string(&empty_repo).unwrap(),
-                    )
-                        .into_response())
-                }
+                NotFound(_) => Ok((
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    serde_json::to_string(&Repository::default()).unwrap(),
+                )
+                    .into_response()),
                 _ => Err(e),
             },
         }

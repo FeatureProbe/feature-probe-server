@@ -115,12 +115,7 @@ impl SdkRepository {
                                     "sync_secret_keys success. version: {:?}, mapping: {:?}",
                                     r.version, r.mapping
                                 );
-                                let version = { (*inner.secret_mapping.read()).version };
-                                if r.version > version {
-                                    let mut secret_mapping = inner.secret_mapping.write();
-                                    secret_mapping.version = r.version;
-                                    secret_mapping.mapping = r.mapping;
-                                }
+                                inner.update_mapping(r);
                             }
                         },
                     },
@@ -206,6 +201,15 @@ impl Inner {
             for server_sdk_key in secret_mapping.mapping.values() {
                 self.sync(server_sdk_key)
             }
+        }
+    }
+
+    pub fn update_mapping(&self, new: SecretMapping) {
+        let version = self.secret_mapping.read().version;
+        if new.version > version {
+            let mut secret_mapping = self.secret_mapping.write();
+            secret_mapping.version = new.version;
+            secret_mapping.mapping = new.mapping;
         }
     }
 
