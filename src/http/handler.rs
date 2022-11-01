@@ -1,6 +1,7 @@
 use super::{cors_headers, ClientParams, SdkAuthorization};
 #[cfg(feature = "unstable")]
 use super::{SecretsParams, SegmentUpdateParams, ToggleUpdateParams};
+use crate::FPServerError::{NotFound, NotReadyError};
 use crate::{repo::SdkRepository, FPServerError};
 use axum::{
     async_trait,
@@ -13,7 +14,7 @@ use feature_probe_event::{
     collector::{EventHandler, FPEventError},
     event::PackedData,
 };
-use feature_probe_server_sdk::{FPUser, Url};
+use feature_probe_server_sdk::{FPUser, Repository, Url};
 use reqwest::{
     header::{self, AUTHORIZATION, USER_AGENT},
     Client, Method,
@@ -76,13 +77,33 @@ impl HttpHandler for FpHttpHandler {
         TypedHeader(SdkAuthorization(sdk_key)): TypedHeader<SdkAuthorization>,
     ) -> Result<Response, FPServerError> {
         match self.repo.server_sdk_repo_string(&sdk_key) {
-            Some(body) => Ok((
+            Ok(body) => Ok((
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, "application/json")],
                 body,
             )
                 .into_response()),
-            None => Err(FPServerError::NotFound(format!("toggles of {}", sdk_key))),
+            Err(e) => match e {
+                NotReadyError(_) => Ok((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    "{}",
+                )
+                    .into_response()),
+                NotFound(_) => {
+                    let empty_repo = Repository {
+                        version: Some(0),
+                        ..Default::default()
+                    };
+                    Ok((
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "application/json")],
+                        serde_json::to_string(&empty_repo).unwrap(),
+                    )
+                        .into_response())
+                }
+                _ => Err(e),
+            },
         }
     }
 
@@ -93,11 +114,22 @@ impl HttpHandler for FpHttpHandler {
     ) -> Result<Response, FPServerError> {
         let user = decode_user(params.user)?;
         match self.repo.client_sdk_eval_string(&sdk_key, &user) {
-            Some(body) => Ok((StatusCode::OK, cors_headers(), body).into_response()),
-            None => Err(FPServerError::NotFound(format!(
-                "toggles of client-sdk-key {}",
-                sdk_key
-            ))),
+            Ok(body) => Ok((StatusCode::OK, cors_headers(), body).into_response()),
+            Err(e) => match e {
+                NotReadyError(_) => Ok((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    "{}",
+                )
+                    .into_response()),
+                NotFound(_) => Ok((
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    "{}",
+                )
+                    .into_response()),
+                _ => Err(e),
+            },
         }
     }
 

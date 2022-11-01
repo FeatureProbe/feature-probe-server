@@ -85,7 +85,7 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
     } else if let (Some(ref client_sdk_key), Some(ref server_sdk_key)) =
         (server_config.client_sdk_key, server_config.server_sdk_key)
     {
-        repo.sync(client_sdk_key.clone(), server_sdk_key.clone());
+        repo.sync(client_sdk_key.clone(), server_sdk_key.clone(), 1);
     } else {
         return Err(FPServerError::ConfigError(
             "not set FP_SERVER_SDK and FP_CLIENT_SDK".to_owned(),
@@ -101,7 +101,7 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
 }
 
 pub fn init_log() {
-    let _ = tracing_subscriber::fmt();
+    let _ = tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE);
     let subscriber = tracing_subscriber::registry().with(EnvFilter::from_default_env());
 
     if let Ok(offset) = UtcOffset::current_local_offset() {
