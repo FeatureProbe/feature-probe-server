@@ -87,11 +87,8 @@ impl SdkRepository {
             let mut interval = tokio::time::interval(inner.server_config.refresh_interval);
             loop {
                 {
-                    let secret_mapping = inner.secret_mapping.read();
-                    for server_sdk_key in secret_mapping.mapping.values() {
-                        inner.sync(server_sdk_key)
-                    }
-                } // drop(secret_keys);
+                    inner.update_clients();
+                }
                 interval.tick().await;
             }
         });
@@ -121,7 +118,6 @@ impl SdkRepository {
                                 let version = { (*inner.secret_mapping.read()).version };
                                 if r.version > version {
                                     let mut secret_mapping = inner.secret_mapping.write();
-                                    inner.clear_sdk_client(&secret_mapping.mapping, &r.mapping);
                                     secret_mapping.version = r.version;
                                     secret_mapping.mapping = r.mapping;
                                 }
@@ -137,7 +133,7 @@ impl SdkRepository {
     pub fn server_sdk_repo_string(&self, server_sdk_key: &str) -> Result<String, FPServerError> {
         let secret_mapping = self.inner.secret_mapping.read();
         if secret_mapping.version == 0 {
-            return Err(FPServerError::NotReadyError(server_sdk_key.to_string()));
+            return Err(FPServerError::NotReady(server_sdk_key.to_string()));
         }
         let server_sdk_keys: &[String] = &secret_mapping
             .mapping
@@ -160,16 +156,13 @@ impl SdkRepository {
     ) -> Result<String, FPServerError> {
         let secret_mapping = self.inner.secret_mapping.read();
         if secret_mapping.version == 0 {
-            return Err(FPServerError::NotReadyError(client_sdk_key.to_string()));
+            return Err(FPServerError::NotReady(client_sdk_key.to_string()));
         }
         let server_sdk_key = match secret_mapping.mapping.get(client_sdk_key) {
             Some(sdk_key) => sdk_key,
             None => return Err(FPServerError::NotFound(client_sdk_key.to_string())),
         };
-        match self.inner.all_evaluated_string(server_sdk_key, user) {
-            Ok(res) => Ok(res),
-            Err(e) => Err(e),
-        }
+        self.inner.all_evaluated_string(server_sdk_key, user)
     }
 
     #[cfg(test)]
@@ -196,17 +189,22 @@ impl Inner {
         }
     }
 
-    fn clear_sdk_client(&self, cur: &HashMap<String, String>, new: &HashMap<String, String>) {
-        let mut clear_keys = vec![];
-        for server_sdk_key in cur.keys() {
-            if !new.contains_key(server_sdk_key) {
-                clear_keys.push(cur.get(server_sdk_key).unwrap());
+    pub fn remove_client(&self, server_sdk_key: &str) {
+        let mut sdks = self.sdk_clients.write();
+        sdks.remove(server_sdk_key);
+    }
+
+    pub fn update_clients(&self) {
+        let secret_mapping = self.secret_mapping.read();
+        let clients = self.sdk_clients.read().clone();
+        if secret_mapping.version > 0 {
+            for server_sdk_key in clients.keys() {
+                if !secret_mapping.mapping.contains_key(server_sdk_key) {
+                    self.remove_client(server_sdk_key);
+                }
             }
-        }
-        if !clear_keys.is_empty() {
-            let mut sdk_clients = self.sdk_clients.write();
-            for server_key in clear_keys {
-                sdk_clients.remove(server_key);
+            for server_sdk_key in secret_mapping.mapping.values() {
+                self.sync(server_sdk_key)
             }
         }
     }
@@ -215,10 +213,10 @@ impl Inner {
         let clients = self.sdk_clients.read();
         let client = match clients.get(sdk_key) {
             Some(client) if !client.initialized() => {
-                return Err(FPServerError::NotReadyError(sdk_key.to_string()))
+                return Err(FPServerError::NotReady(sdk_key.to_string()))
             }
             Some(client) => client,
-            None => return Err(FPServerError::NotReadyError(sdk_key.to_string())),
+            None => return Err(FPServerError::NotReady(sdk_key.to_string())),
         };
         let arc_repo = client.repo();
         let repo = arc_repo.read();
@@ -229,10 +227,10 @@ impl Inner {
         let clients = self.sdk_clients.read();
         let client = match clients.get(sdk_key) {
             Some(client) if !client.initialized() => {
-                return Err(FPServerError::NotReadyError(sdk_key.to_string()))
+                return Err(FPServerError::NotReady(sdk_key.to_string()))
             }
             Some(client) => client,
-            None => return Err(FPServerError::NotReadyError(sdk_key.to_string())),
+            None => return Err(FPServerError::NotReady(sdk_key.to_string())),
         };
         let arc_repo = client.repo();
         let repo = arc_repo.read();
@@ -250,7 +248,7 @@ impl Inner {
 mod tests {
 
     use super::*;
-    use crate::FPServerError::{NotFound, NotReadyError};
+    use crate::FPServerError::{NotFound, NotReady};
     use axum::{routing::get, Json, Router, TypedHeader};
     #[cfg(feature = "unstable")]
     use feature_probe_server_sdk::FPUser;
@@ -308,7 +306,7 @@ mod tests {
         let repository = setup_not_ready_repository(port, &client_sdk_key, &server_sdk_key).await;
 
         let repo_string_err = repository.server_sdk_repo_string(&server_sdk_key);
-        assert_eq!(repo_string_err.err(), Some(NotReadyError(server_sdk_key)));
+        assert_eq!(repo_string_err.err(), Some(NotReady(server_sdk_key)));
     }
 
     #[cfg(feature = "unstable")]

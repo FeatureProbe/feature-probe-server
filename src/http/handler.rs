@@ -1,7 +1,7 @@
 use super::{cors_headers, ClientParams, SdkAuthorization};
 #[cfg(feature = "unstable")]
 use super::{SecretsParams, SegmentUpdateParams, ToggleUpdateParams};
-use crate::FPServerError::{NotFound, NotReadyError};
+use crate::FPServerError::{NotFound, NotReady};
 use crate::{repo::SdkRepository, FPServerError};
 use axum::{
     async_trait,
@@ -84,7 +84,7 @@ impl HttpHandler for FpHttpHandler {
             )
                 .into_response()),
             Err(e) => match e {
-                NotReadyError(_) => Ok((
+                NotReady(_) => Ok((
                     StatusCode::SERVICE_UNAVAILABLE,
                     [(header::CONTENT_TYPE, "application/json")],
                     "{}",
@@ -116,7 +116,7 @@ impl HttpHandler for FpHttpHandler {
         match self.repo.client_sdk_eval_string(&sdk_key, &user) {
             Ok(body) => Ok((StatusCode::OK, cors_headers(), body).into_response()),
             Err(e) => match e {
-                NotReadyError(_) => Ok((
+                NotReady(_) => Ok((
                     StatusCode::SERVICE_UNAVAILABLE,
                     [(header::CONTENT_TYPE, "application/json")],
                     "{}",

@@ -20,7 +20,7 @@ pub enum FPServerError {
     #[error("config error: {0}")]
     ConfigError(String),
     #[error("not ready error: {0}")]
-    NotReadyError(String),
+    NotReady(String),
     #[error("json error: {0}")]
     JsonError(String),
 }

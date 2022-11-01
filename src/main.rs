@@ -101,7 +101,7 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
 }
 
 pub fn init_log() {
-    let _ = tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE);
+    let _ = tracing_subscriber::fmt();
     let subscriber = tracing_subscriber::registry().with(EnvFilter::from_default_env());
 
     if let Ok(offset) = UtcOffset::current_local_offset() {
