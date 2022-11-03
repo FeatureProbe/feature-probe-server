@@ -1,9 +1,9 @@
 use futures::FutureExt;
-use socketio_rs::{Payload, ServerBuilder, ServerClient};
+use socketio_rs::{Payload, ServerBuilder, ServerSocket};
 use tracing::info;
 
 pub async fn serve_socketio() {
-    let callback = |payload: Payload, _client: ServerClient, _| {
+    let callback = |payload: Option<Payload>, _socket: ServerSocket, _| {
         async move {
             info!("socketio recv {:?}", payload);
         }

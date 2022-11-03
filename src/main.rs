@@ -9,6 +9,7 @@ use http::FpHttpHandler;
 use std::sync::Arc;
 use time::macros::format_description;
 use time::UtcOffset;
+use tracing::error;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::fmt::time::{OffsetTime, SystemTime};
 use tracing_subscriber::layer::SubscriberExt;
@@ -17,8 +18,8 @@ use tracing_subscriber::EnvFilter;
 
 mod base;
 mod http;
+mod push;
 mod repo;
-mod socketio;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -35,6 +36,20 @@ async fn main() -> Result<()> {
 
 async fn start(server_config: ServerConfig) -> Result<()> {
     init_log();
+    error!("FeatureProbe Server Commit: {}", env!("VERGEN_GIT_SHA"));
+    error!(
+        "FeatureProbe Server BuildTs: {}",
+        env!("VERGEN_BUILD_TIMESTAMP")
+    );
+    error!(
+        "FeatureProbe Server CommitTs: {}",
+        env!("VERGEN_GIT_COMMIT_TIMESTAMP")
+    );
+    error!(
+        "FeatureProbe Server Cargo Profile: {}",
+        env!("VERGEN_CARGO_PROFILE")
+    );
+    error!("FeatureProbe Server Config: {}", server_config);
     let server_port = server_config.server_port;
     let handler = match init_handler(server_config) {
         Ok(h) => h,
@@ -47,7 +62,7 @@ async fn start(server_config: ServerConfig) -> Result<()> {
         handler,
     ));
 
-    tokio::spawn(crate::socketio::serve_socketio());
+    tokio::spawn(crate::push::serve_socketio());
     Ok(())
 }
 
@@ -73,7 +88,7 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
     } else if let (Some(ref client_sdk_key), Some(ref server_sdk_key)) =
         (server_config.client_sdk_key, server_config.server_sdk_key)
     {
-        repo.sync(client_sdk_key.clone(), server_sdk_key.clone());
+        repo.sync(client_sdk_key.clone(), server_sdk_key.clone(), 1);
     } else {
         return Err(FPServerError::ConfigError(
             "not set FP_SERVER_SDK and FP_CLIENT_SDK".to_owned(),

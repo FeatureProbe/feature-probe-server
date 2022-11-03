@@ -182,7 +182,6 @@ pub fn cors_headers() -> [(HeaderName, &'static str); 4] {
 mod tests {
     use super::{handler::LocalFileHttpHandler, *};
     use crate::{base::ServerConfig, repo::SdkRepository};
-    use axum::http::StatusCode;
     use feature_probe_server_sdk::{FPDetail, FPUser, Repository, SdkAuthorization};
     use reqwest::header::CONTENT_TYPE;
     use reqwest::{header::AUTHORIZATION, Client, Error, Method, Url};
@@ -205,7 +204,7 @@ mod tests {
         .await;
         tokio::time::sleep(Duration::from_millis(100)).await; // wait fp server port listen
         let repo_string = repo.server_sdk_repo_string(&server_sdk_key);
-        assert!(repo_string.is_some());
+        assert!(repo_string.is_ok());
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/api/server-sdk/toggles", fp_server_port),
@@ -225,8 +224,11 @@ mod tests {
         )
         .await;
         assert!(resp.is_ok());
-        let resp = resp.unwrap();
-        assert!(resp.status() == StatusCode::NOT_FOUND);
+        let body = resp.unwrap().text().await;
+        assert!(body.is_ok());
+        let body = body.unwrap();
+        let r = serde_json::from_str::<Repository>(&body).unwrap();
+        assert_eq!(r, Repository::default());
 
         let resp = http_get(
             format!("http://127.0.0.1:{}/internal/all_secrets", fp_server_port),
@@ -423,7 +425,7 @@ mod tests {
             server_sdk_key: Some(server_sdk_key.to_owned()),
             server_port: listen_port,
         });
-        repo.sync(client_sdk_key.to_owned(), server_sdk_key.to_owned());
+        repo.sync(client_sdk_key.to_owned(), server_sdk_key.to_owned(), 1);
         let repo = Arc::new(repo);
         let feature_probe_server = FpHttpHandler {
             repo: repo.clone(),
