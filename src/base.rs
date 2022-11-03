@@ -11,7 +11,7 @@ use tracing_subscriber::fmt::{
 };
 use tracing_subscriber::registry::LookupSpan;
 
-#[derive(Debug, Error, Deserialize)]
+#[derive(Debug, Error, Deserialize, PartialEq, Eq)]
 pub enum FPServerError {
     #[error("not found {0}")]
     NotFound(String),
@@ -19,6 +19,10 @@ pub enum FPServerError {
     UserDecodeError,
     #[error("config error: {0}")]
     ConfigError(String),
+    #[error("not ready error: {0}")]
+    NotReady(String),
+    #[error("json error: {0}")]
+    JsonError(String),
 }
 
 #[derive(Debug, Clone)]

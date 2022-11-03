@@ -85,7 +85,7 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
     } else if let (Some(ref client_sdk_key), Some(ref server_sdk_key)) =
         (server_config.client_sdk_key, server_config.server_sdk_key)
     {
-        repo.sync(client_sdk_key.clone(), server_sdk_key.clone());
+        repo.sync(client_sdk_key.clone(), server_sdk_key.clone(), 1);
     } else {
         return Err(FPServerError::ConfigError(
             "not set FP_SERVER_SDK and FP_CLIENT_SDK".to_owned(),

@@ -37,7 +37,7 @@ async fn main() {
         server_sdk_key: Some(server_sdk_key.clone()),
         server_port: 9000,
     });
-    repo.sync(client_sdk_key, server_sdk_key);
+    repo.sync(client_sdk_key, server_sdk_key, 1);
     let repo = Arc::new(repo);
     let feature_probe_server = FpHttpHandler {
         repo: repo.clone(),
