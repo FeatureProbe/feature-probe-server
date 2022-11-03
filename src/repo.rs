@@ -392,14 +392,14 @@ mod tests {
         let repo = SdkRepository::new(ServerConfig {
             toggles_url,
             events_url,
-            refresh_interval: Duration::from_millis(10),
+            refresh_interval: Duration::from_millis(100),
             client_sdk_key: None,
             server_sdk_key: None,
             keys_url: Some(keys_url.clone()),
             server_port: port,
         });
         repo.sync_with(keys_url);
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
         repo
     }
 
