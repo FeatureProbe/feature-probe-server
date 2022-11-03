@@ -170,8 +170,9 @@ impl SdkRepository {
 
 impl Inner {
     pub fn sync(&self, server_sdk_key: &str) {
-        let mut sdks = self.sdk_clients.write();
-        if (*sdks).get(server_sdk_key).is_none() {
+        let sdks = self.sdk_clients.read().clone();
+        if !sdks.contains_key(server_sdk_key) {
+            let mut mut_sdks = self.sdk_clients.write();
             let config = FPConfig {
                 server_sdk_key: server_sdk_key.to_owned(),
                 remote_url: Url::parse("http://nouse.com").unwrap(),
@@ -180,7 +181,7 @@ impl Inner {
                 http_client: Some(self.http_client.clone()),
                 ..Default::default()
             };
-            sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
+            &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
         }
     }
 
@@ -193,13 +194,15 @@ impl Inner {
         let secret_mapping = self.secret_mapping.read();
         let clients = self.sdk_clients.read().clone();
         if secret_mapping.version > 0 {
+            let mut keys = vec![];
+            for server_sdk_key in secret_mapping.mapping.values() {
+                self.sync(server_sdk_key);
+                keys.push(server_sdk_key.to_string());
+            }
             for server_sdk_key in clients.keys() {
-                if !secret_mapping.mapping.contains_key(server_sdk_key) {
+                if !keys.contains(server_sdk_key) {
                     self.remove_client(server_sdk_key);
                 }
-            }
-            for server_sdk_key in secret_mapping.mapping.values() {
-                self.sync(server_sdk_key)
             }
         }
     }
