@@ -8,8 +8,7 @@ use reqwest::Method;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
-
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 #[derive(Debug, Clone)]
 pub struct SdkRepository {
@@ -181,7 +180,8 @@ impl Inner {
                 http_client: Some(self.http_client.clone()),
                 ..Default::default()
             };
-            &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
+            info!("{:?} added", server_sdk_key);
+            let _ = &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
         }
     }
 
@@ -201,6 +201,7 @@ impl Inner {
             }
             for server_sdk_key in clients.keys() {
                 if !keys.contains(server_sdk_key) {
+                    info!("{:?} removed.", server_sdk_key);
                     self.remove_client(server_sdk_key);
                 }
             }
@@ -270,6 +271,8 @@ mod tests {
         setup_mock_api(port);
         let client_sdk_key = "client-sdk-key".to_owned();
         let server_sdk_key = "server-sdk-key".to_owned();
+        let client_sdk_key2 = "client-sdk-key2".to_owned();
+        let server_sdk_key2 = "server-sdk-key2".to_owned();
         let repository = setup_repository(port, &client_sdk_key, &server_sdk_key).await;
 
         let repo_string = repository.server_sdk_repo_string(&server_sdk_key);
@@ -280,6 +283,25 @@ mod tests {
         let secret_keys = repository.secret_keys();
         assert!(secret_keys.len() == 1);
         assert!(secret_keys.get(&client_sdk_key) == Some(&server_sdk_key));
+
+        {
+            let mut new = SecretMapping::default();
+            new.version = 2;
+            new.mapping
+                .insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
+            let clients = { &*(repository.inner.sdk_clients.read()) };
+            assert!(clients.contains_key(&server_sdk_key));
+            repository.inner.update_mapping(new);
+            let secret_mapping = { &*(repository.inner.secret_mapping.read()) };
+            let secret = &secret_mapping.mapping.get(&client_sdk_key2);
+            assert_eq!(secret_mapping.version, 2);
+            assert_eq!(secret.unwrap(), &server_sdk_key2.to_string());
+        }
+
+        repository.inner.update_clients();
+        let clients = { &*(repository.inner.sdk_clients.read()) };
+        assert!(!clients.contains_key(&server_sdk_key));
+        assert!(clients.contains_key(&server_sdk_key2));
     }
 
     #[tokio::test]
