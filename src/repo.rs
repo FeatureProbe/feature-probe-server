@@ -170,7 +170,7 @@ impl SdkRepository {
 impl Inner {
     pub fn sync(&self, server_sdk_key: &str) {
         let should_sync = {
-           let sdks = self.sdk_clients.read();
+            let sdks = self.sdk_clients.read();
             !sdks.contains_key(server_sdk_key)
         };
         if should_sync {
