@@ -15,7 +15,7 @@ pub struct SdkRepository {
     inner: Arc<Inner>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 struct SecretMapping {
     pub version: u128,
     pub mapping: HashMap<String, String>,
@@ -169,8 +169,11 @@ impl SdkRepository {
 
 impl Inner {
     pub fn sync(&self, server_sdk_key: &str) {
-        let sdks = self.sdk_clients.read().clone();
-        if !sdks.contains_key(server_sdk_key) {
+        let should_sync = {
+           let sdks = self.sdk_clients.read();
+            !sdks.contains_key(server_sdk_key)
+        };
+        if should_sync {
             let mut mut_sdks = self.sdk_clients.write();
             let config = FPConfig {
                 server_sdk_key: server_sdk_key.to_owned(),
@@ -278,28 +281,28 @@ mod tests {
         let repo_string = repository.server_sdk_repo_string(&server_sdk_key);
         assert!(repo_string.is_ok());
         let r = serde_json::from_str::<Repository>(&repo_string.unwrap()).unwrap();
-        assert!(r == repo_from_test_file());
+        assert_eq!(r, repo_from_test_file());
 
         let secret_keys = repository.secret_keys();
-        assert!(secret_keys.len() == 1);
-        assert!(secret_keys.get(&client_sdk_key) == Some(&server_sdk_key));
+        assert_eq!(secret_keys.len(), 1);
+        assert_eq!(secret_keys.get(&client_sdk_key), Some(&server_sdk_key));
 
-        {
-            let mut new = SecretMapping::default();
-            new.version = 2;
-            new.mapping
-                .insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
-            let clients = { &*(repository.inner.sdk_clients.read()) };
-            assert!(clients.contains_key(&server_sdk_key));
-            repository.inner.update_mapping(new);
-            let secret_mapping = { &*(repository.inner.secret_mapping.read()) };
-            let secret = &secret_mapping.mapping.get(&client_sdk_key2);
-            assert_eq!(secret_mapping.version, 2);
-            assert_eq!(secret.unwrap(), &server_sdk_key2.to_string());
-        }
+        // test mapping sync
+        let mut new = SecretMapping::default();
+        new.version = 2;
+        new.mapping
+            .insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
+        let clients = { (repository.inner.sdk_clients.read()).clone() };
+        assert!(clients.contains_key(&server_sdk_key));
+        repository.inner.update_mapping(new);
+        let secret_mapping = { (repository.inner.secret_mapping.read()).clone() };
+        let secret = &secret_mapping.mapping.get(&client_sdk_key2);
+        assert_eq!(secret_mapping.version, 2);
+        assert_eq!(secret.unwrap(), &server_sdk_key2.to_string());
 
+        // test clients sync
         repository.inner.update_clients();
-        let clients = { &*(repository.inner.sdk_clients.read()) };
+        let clients = { (repository.inner.sdk_clients.read()).clone() };
         assert!(!clients.contains_key(&server_sdk_key));
         assert!(clients.contains_key(&server_sdk_key2));
     }
