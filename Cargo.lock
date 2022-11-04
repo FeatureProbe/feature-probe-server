@@ -331,7 +331,8 @@ dependencies = [
 [[package]]
 name = "engineio-rs"
 version = "0.1.0"
-source = "git+https://github.com/socket-iox/socket-io.git#f33e2e4e7b721dab26707ca5a9541e2b67c2b59d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c5f00b76f7d96bf1c7d29c5b7fd7c86dee476f3eb9db2621467804df90837d2"
 dependencies = [
  "adler32",
  "async-stream",
@@ -441,13 +442,14 @@ dependencies = [
 
 [[package]]
 name = "feature-probe-server-sdk"
-version = "1.2.5"
+version = "1.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "706c87ad5ee1c882f0ef7e5f336fd3bfef7947d5b27f206bfb0354d76151d4da"
+checksum = "cd0916b079980150a4d3053a759bf30f3940ba4f13239fea7e2f9d033834aa7a"
 dependencies = [
  "anyhow",
  "byteorder",
  "dashmap",
+ "futures-util",
  "headers",
  "http",
  "lazy_static",
@@ -1047,9 +1049,9 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.13.1"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
+checksum = "f6058e64324c71e02bc2b150e4f3bc8286db6c83092132ffa3f6b1eab0f9def5"
 dependencies = [
  "hermit-abi",
  "libc",
@@ -1669,7 +1671,8 @@ dependencies = [
 [[package]]
 name = "socketio-rs"
 version = "0.1.0"
-source = "git+https://github.com/socket-iox/socket-io.git#f33e2e4e7b721dab26707ca5a9541e2b67c2b59d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56123af9360ce969d1f6d4a98f1b7f657af4e37bab8e9b05c48f9cf926559e99"
 dependencies = [
  "async-stream",
  "backoff",

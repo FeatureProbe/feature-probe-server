@@ -1,4 +1,6 @@
 use crate::base::ServerConfig;
+#[cfg(feature = "realtime")]
+use crate::socket::RealtimeSocket;
 use crate::FPServerError;
 use feature_probe_server_sdk::{EvalDetail, FPConfig, FPUser, FeatureProbe as FPClient, Url};
 #[cfg(feature = "unstable")]
@@ -27,6 +29,8 @@ struct Inner {
     http_client: reqwest::Client,
     sdk_clients: RwLock<HashMap<String, FPClient>>,
     secret_mapping: RwLock<SecretMapping>,
+    #[cfg(feature = "realtime")]
+    realtime_socket: RealtimeSocket,
 }
 
 impl SdkRepository {
@@ -37,6 +41,8 @@ impl SdkRepository {
                 http_client: Default::default(),
                 sdk_clients: Default::default(),
                 secret_mapping: Default::default(),
+                #[cfg(feature = "realtime")]
+                realtime_socket: RealtimeSocket::serve(),
             }),
         }
     }
@@ -184,6 +190,15 @@ impl Inner {
                 ..Default::default()
             };
             info!("{:?} added", server_sdk_key);
+
+            #[cfg(feature = "realtime")]
+            {
+                let mut client = FPClient::new(config);
+                self.setup_notify(server_sdk_key, &mut client);
+                let _ = &mut_sdks.insert(server_sdk_key.to_owned(), client);
+            }
+
+            #[cfg(not(feature = "realtime"))]
             let _ = &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
         }
     }
@@ -218,6 +233,22 @@ impl Inner {
             secret_mapping.version = new.version;
             secret_mapping.mapping = new.mapping;
         }
+    }
+
+    #[cfg(feature = "realtime")]
+    fn setup_notify(&self, server_sdk_key: &str, client: &mut FPClient) {
+        let sdk_key = server_sdk_key.to_owned();
+        let realtime_socket = self.realtime_socket.clone();
+
+        client.set_update_callback(Box::new(move |_old, _new| {
+            let key = sdk_key.clone();
+            let socket = realtime_socket.clone();
+            tokio::spawn(async move {
+                socket
+                    .notify_sdk(key, "update", serde_json::json!(""))
+                    .await;
+            });
+        }));
     }
 
     fn repo_string(&self, sdk_key: &str) -> Result<String, FPServerError> {

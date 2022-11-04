@@ -18,8 +18,9 @@ use tracing_subscriber::EnvFilter;
 
 mod base;
 mod http;
-mod push;
 mod repo;
+#[cfg(feature = "realtime")]
+mod socket;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -62,7 +63,6 @@ async fn start(server_config: ServerConfig) -> Result<()> {
         handler,
     ));
 
-    tokio::spawn(crate::push::serve_socketio());
     Ok(())
 }
 
@@ -104,7 +104,6 @@ fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerEr
 }
 
 pub fn init_log() {
-    let _ = tracing_subscriber::fmt();
     let subscriber = tracing_subscriber::registry().with(EnvFilter::from_default_env());
 
     if let Ok(offset) = UtcOffset::current_local_offset() {

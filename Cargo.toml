@@ -18,7 +18,9 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+default = []
 unstable = []
+realtime = ["socketio-rs"]
 
 [build-dependencies]
 vergen = "7"
@@ -48,8 +50,8 @@ tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ] }
 url = "2.3"
-socketio-rs = { git = "https://github.com/socket-iox/socket-io.git" }
-feature-probe-server-sdk = { version = "1.2.5", features = [
+socketio-rs = { optional = true, version = "0.1.0" }
+feature-probe-server-sdk = { version = "1.2.6", features = [
   "internal",
   "use_tokio",
 ], default-features = false }
