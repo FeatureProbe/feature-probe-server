@@ -8,6 +8,7 @@ build:
 release:
 	cargo build --release --verbose
 test:
-	cargo test --release --verbose
+	cargo test --release --verbose && \
+	cargo test --release --verbose --features realtime --no-default-features
 example:
 	cargo build --examples --release --verbose

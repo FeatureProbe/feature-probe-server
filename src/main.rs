@@ -1,4 +1,6 @@
 use crate::base::ServerConfig;
+#[cfg(feature = "realtime")]
+use crate::realtime::RealtimeSocket;
 use crate::repo::SdkRepository;
 use anyhow::{bail, Result};
 use base::FPServerError;
@@ -18,9 +20,9 @@ use tracing_subscriber::EnvFilter;
 
 mod base;
 mod http;
-mod repo;
 #[cfg(feature = "realtime")]
-mod socket;
+mod realtime;
+mod repo;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,8 +53,19 @@ async fn start(server_config: ServerConfig) -> Result<()> {
         env!("VERGEN_CARGO_PROFILE")
     );
     error!("FeatureProbe Server Config: {}", server_config);
+
+    #[cfg(feature = "realtime")]
+    let realtime_socket = {
+        let realtime_port = server_config.realtime_port;
+        RealtimeSocket::serve(realtime_port)
+    };
+
     let server_port = server_config.server_port;
-    let handler = match init_handler(server_config) {
+    let handler = match init_handler(
+        server_config,
+        #[cfg(feature = "realtime")]
+        realtime_socket,
+    ) {
         Ok(h) => h,
         Err(e) => {
             bail!("server config error: {}", e);
@@ -81,8 +94,15 @@ fn init_server_config(
     ServerConfig::try_parse(config)
 }
 
-fn init_handler(server_config: ServerConfig) -> Result<FpHttpHandler, FPServerError> {
-    let repo = SdkRepository::new(server_config.clone());
+fn init_handler(
+    server_config: ServerConfig,
+    #[cfg(feature = "realtime")] realtime_socket: RealtimeSocket,
+) -> Result<FpHttpHandler, FPServerError> {
+    let repo = SdkRepository::new(
+        server_config.clone(),
+        #[cfg(feature = "realtime")]
+        realtime_socket,
+    );
     if let Some(keys_url) = server_config.keys_url {
         repo.sync_with(keys_url)
     } else if let (Some(ref client_sdk_key), Some(ref server_sdk_key)) =

@@ -5,6 +5,9 @@ use feature_probe_server::{
     http::{serve_http, FpHttpHandler, LocalFileHttpHandler},
     repo::SdkRepository,
 };
+
+#[cfg(feature = "realtime")]
+use feature_probe_server::realtime::RealtimeSocket;
 use feature_probe_server_sdk::Url;
 
 #[tokio::main]
@@ -28,15 +31,25 @@ async fn main() {
     .unwrap();
     let events_url = Url::parse(&format!("http://0.0.0.0:{}/api/events", api_port)).unwrap();
     let refresh_seconds = Duration::from_secs(1);
-    let repo = SdkRepository::new(ServerConfig {
+    let config = ServerConfig {
         toggles_url,
         events_url: events_url.clone(),
         keys_url: None,
-        refresh_interval: refresh_seconds.clone(),
+        refresh_interval: refresh_seconds,
         client_sdk_key: Some(client_sdk_key.clone()),
         server_sdk_key: Some(server_sdk_key.clone()),
         server_port: 9000,
-    });
+        #[cfg(feature = "realtime")]
+        realtime_port: 9100,
+    };
+
+    #[cfg(feature = "realtime")]
+    let realtime_socket = RealtimeSocket::serve(config.realtime_port);
+    let repo = SdkRepository::new(
+        config,
+        #[cfg(feature = "realtime")]
+        realtime_socket,
+    );
     repo.sync(client_sdk_key, server_sdk_key, 1);
     let repo = Arc::new(repo);
     let feature_probe_server = FpHttpHandler {

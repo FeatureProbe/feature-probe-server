@@ -1,6 +1,6 @@
 use crate::base::ServerConfig;
 #[cfg(feature = "realtime")]
-use crate::socket::RealtimeSocket;
+use crate::realtime::RealtimeSocket;
 use crate::FPServerError;
 use feature_probe_server_sdk::{EvalDetail, FPConfig, FPUser, FeatureProbe as FPClient, Url};
 #[cfg(feature = "unstable")]
@@ -34,7 +34,10 @@ struct Inner {
 }
 
 impl SdkRepository {
-    pub fn new(server_config: ServerConfig) -> Self {
+    pub fn new(
+        server_config: ServerConfig,
+        #[cfg(feature = "realtime")] realtime_socket: RealtimeSocket,
+    ) -> Self {
         Self {
             inner: Arc::new(Inner {
                 server_config,
@@ -42,32 +45,27 @@ impl SdkRepository {
                 sdk_clients: Default::default(),
                 secret_mapping: Default::default(),
                 #[cfg(feature = "realtime")]
-                realtime_socket: RealtimeSocket::serve(),
+                realtime_socket,
             }),
         }
     }
 
     #[cfg(feature = "unstable")]
-    pub fn update_segments(&self, segments: HashMap<String, Segment>) -> Result<(), FPServerError> {
-        // TODO: perf
-        let mut sdks = self.inner.sdk_clients.write();
-        sdks.iter_mut()
-            .for_each(|(_, sdk)| sdk.update_segments(segments.clone()));
+    pub fn update_segments(
+        &self,
+        _segments: HashMap<String, Segment>,
+    ) -> Result<(), FPServerError> {
+        // TODO:
         Ok(())
     }
 
     #[cfg(feature = "unstable")]
     pub fn update_toggles(
         &self,
-        server_sdk_key: &str,
-        toggles: HashMap<String, Toggle>,
+        _server_sdk_key: &str,
+        _toggles: HashMap<String, Toggle>,
     ) -> Result<(), FPServerError> {
-        let mut sdks = self.inner.sdk_clients.write();
-        let _ = match sdks.get_mut(server_sdk_key) {
-            //: TODO: create sdk if not exist
-            None => debug!("update_toggles server_sdk_key not exit {}", server_sdk_key),
-            Some(sdk) => sdk.update_toggles(toggles),
-        };
+        // TODO:
         Ok(())
     }
 
@@ -169,7 +167,7 @@ impl SdkRepository {
     #[cfg(feature = "unstable")]
     fn sdk_client(&self, sdk_key: &str) -> Option<FPClient> {
         let sdk_clients = self.inner.sdk_clients.read();
-        sdk_clients.get(sdk_key).map(|c| c.clone())
+        sdk_clients.get(sdk_key).cloned()
     }
 }
 
@@ -319,8 +317,10 @@ mod tests {
         assert_eq!(secret_keys.get(&client_sdk_key), Some(&server_sdk_key));
 
         // test mapping sync
-        let mut new = SecretMapping::default();
-        new.version = 2;
+        let mut new = SecretMapping {
+            version: 2,
+            ..Default::default()
+        };
         new.mapping
             .insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
         let clients = { (repository.inner.sdk_clients.read()).clone() };
@@ -407,7 +407,7 @@ mod tests {
         let toggles_url =
             Url::parse(&format!("http://127.0.0.1:{}/api/server-sdk/toggles", port)).unwrap();
         let events_url = Url::parse(&format!("http://127.0.0.1:{}/api/events", port)).unwrap();
-        let repo = SdkRepository::new(ServerConfig {
+        let config = ServerConfig {
             toggles_url,
             events_url,
             refresh_interval: Duration::from_secs(1),
@@ -415,7 +415,18 @@ mod tests {
             server_sdk_key: Some(server_sdk_key.to_owned()),
             keys_url: None,
             server_port: port,
-        });
+            #[cfg(feature = "realtime")]
+            realtime_port: port + 100,
+        };
+
+        #[cfg(feature = "realtime")]
+        let rs = RealtimeSocket::serve(config.realtime_port);
+
+        let repo = SdkRepository::new(
+            config,
+            #[cfg(feature = "realtime")]
+            rs,
+        );
         repo.sync(client_sdk_key.to_owned(), server_sdk_key.to_owned(), 1);
         tokio::time::sleep(Duration::from_millis(100)).await;
         repo
@@ -429,7 +440,7 @@ mod tests {
         let toggles_url =
             Url::parse(&format!("http://127.0.0.1:{}/api/server-sdk/toggles", port)).unwrap();
         let events_url = Url::parse(&format!("http://127.0.0.1:{}/api/events", port)).unwrap();
-        let repo = SdkRepository::new(ServerConfig {
+        let config = ServerConfig {
             toggles_url,
             events_url,
             refresh_interval: Duration::from_secs(1),
@@ -437,7 +448,18 @@ mod tests {
             server_sdk_key: Some(server_sdk_key.to_owned()),
             keys_url: None,
             server_port: port,
-        });
+            #[cfg(feature = "realtime")]
+            realtime_port: port + 100,
+        };
+
+        #[cfg(feature = "realtime")]
+        let rs = RealtimeSocket::serve(config.realtime_port);
+
+        let repo = SdkRepository::new(
+            config,
+            #[cfg(feature = "realtime")]
+            rs,
+        );
         repo.sync(client_sdk_key.to_owned(), server_sdk_key.to_owned(), 0);
         tokio::time::sleep(Duration::from_millis(100)).await;
         repo
@@ -448,7 +470,7 @@ mod tests {
             Url::parse(&format!("http://127.0.0.1:{}/api/server-sdk/toggles", port)).unwrap();
         let events_url = Url::parse(&format!("http://127.0.0.1:{}/api/events", port)).unwrap();
         let keys_url = Url::parse(&format!("http://127.0.0.1:{}/api/secret-keys", port)).unwrap();
-        let repo = SdkRepository::new(ServerConfig {
+        let config = ServerConfig {
             toggles_url,
             events_url,
             refresh_interval: Duration::from_millis(100),
@@ -456,7 +478,18 @@ mod tests {
             server_sdk_key: None,
             keys_url: Some(keys_url.clone()),
             server_port: port,
-        });
+            #[cfg(feature = "realtime")]
+            realtime_port: port + 100,
+        };
+
+        #[cfg(feature = "realtime")]
+        let rs = RealtimeSocket::serve(config.realtime_port);
+
+        let repo = SdkRepository::new(
+            config,
+            #[cfg(feature = "realtime")]
+            rs,
+        );
         repo.sync_with(keys_url);
         tokio::time::sleep(Duration::from_millis(300)).await;
         repo

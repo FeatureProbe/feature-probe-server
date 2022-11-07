@@ -15,8 +15,7 @@ pub struct RealtimeSocket {
 }
 
 impl RealtimeSocket {
-    pub fn serve() -> Self {
-        let port = 9090;
+    pub fn serve(port: u16) -> Self {
         info!("serve_socektio on port {}", port);
         let callback =
             |payload: Option<Payload>, socket: ServerSocket, _| Self::register(payload, socket);

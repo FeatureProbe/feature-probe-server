@@ -34,6 +34,8 @@ pub struct ServerConfig {
     pub server_sdk_key: Option<String>,
     pub client_sdk_key: Option<String>,
     pub server_port: u16,
+    #[cfg(feature = "realtime")]
+    pub realtime_port: u16,
 }
 
 impl ServerConfig {
@@ -109,7 +111,13 @@ impl ServerConfig {
         };
         let server_port = match config.get_int("server_port") {
             Err(_) => 9000, // default port
-            Ok(server_port) => server_port as u16,
+            Ok(port) => port as u16,
+        };
+
+        #[cfg(feature = "realtime")]
+        let realtime_port = match config.get_int("realtime_port") {
+            Err(_) => 9090, // default port
+            Ok(port) => port as u16,
         };
 
         Ok(ServerConfig {
@@ -120,6 +128,8 @@ impl ServerConfig {
             client_sdk_key,
             server_sdk_key,
             server_port,
+            #[cfg(feature = "realtime")]
+            realtime_port,
         })
     }
 }

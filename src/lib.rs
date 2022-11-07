@@ -1,7 +1,7 @@
 pub mod base;
 pub mod http;
-pub mod repo;
 #[cfg(feature = "realtime")]
-pub mod socket;
+pub mod realtime;
+pub mod repo;
 
 pub use base::{FPServerError, ServerConfig};

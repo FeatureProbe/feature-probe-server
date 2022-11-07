@@ -181,6 +181,8 @@ pub fn cors_headers() -> [(HeaderName, &'static str); 4] {
 #[cfg(test)]
 mod tests {
     use super::{handler::LocalFileHttpHandler, *};
+    #[cfg(feature = "realtime")]
+    use crate::realtime::RealtimeSocket;
     use crate::{base::ServerConfig, repo::SdkRepository};
     use feature_probe_server_sdk::{FPDetail, FPUser, Repository, SdkAuthorization};
     use reqwest::header::CONTENT_TYPE;
@@ -416,7 +418,7 @@ mod tests {
         .unwrap();
         let events_url =
             Url::parse(&format!("http://127.0.0.1:{}/api/events", target_port)).unwrap();
-        let repo = SdkRepository::new(ServerConfig {
+        let config = ServerConfig {
             toggles_url,
             events_url: events_url.clone(),
             refresh_interval: Duration::from_secs(1),
@@ -424,7 +426,18 @@ mod tests {
             client_sdk_key: Some(client_sdk_key.to_owned()),
             server_sdk_key: Some(server_sdk_key.to_owned()),
             server_port: listen_port,
-        });
+            #[cfg(feature = "realtime")]
+            realtime_port: listen_port + 100,
+        };
+
+        #[cfg(feature = "realtime")]
+        let rs = RealtimeSocket::serve(config.realtime_port);
+
+        let repo = SdkRepository::new(
+            config,
+            #[cfg(feature = "realtime")]
+            rs,
+        );
         repo.sync(client_sdk_key.to_owned(), server_sdk_key.to_owned(), 1);
         let repo = Arc::new(repo);
         let feature_probe_server = FpHttpHandler {
