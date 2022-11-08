@@ -4,7 +4,7 @@ use std::sync::Arc;
 use futures::{Future, FutureExt};
 use serde_json::Value;
 use socketio_rs::{Payload, Server, ServerBuilder, ServerSocket};
-use tracing::{info, warn};
+use tracing::{info, trace, warn};
 
 type SocketCallback = Pin<Box<dyn Future<Output = ()> + Send>>;
 
@@ -34,7 +34,7 @@ impl RealtimeSocket {
     }
 
     pub async fn notify_sdk(&self, sdk_key: String, event: &str, data: serde_json::Value) {
-        info!("notify_sdk {} {} {:?}", sdk_key, event, data);
+        trace!("notify_sdk {} {} {:?}", sdk_key, event, data);
         self.server.emit_to("/", vec![&sdk_key], event, data).await
     }
 

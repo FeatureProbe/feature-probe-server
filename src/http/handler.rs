@@ -15,6 +15,7 @@ use feature_probe_event::{
     event::PackedData,
 };
 use feature_probe_server_sdk::{FPUser, Repository, Url};
+use parking_lot::Mutex;
 use reqwest::{
     header::{self, AUTHORIZATION, USER_AGENT},
     Client, Method,
@@ -215,18 +216,40 @@ fn decode_user(user: String) -> Result<FPUser, FPServerError> {
     Err(FPServerError::UserDecodeError)
 }
 
-#[derive(Clone)]
-pub struct LocalFileHttpHandler;
+// used for mocking feature probe API
+#[derive(Clone, Default)]
+pub struct LocalFileHttpHandlerForTest {
+    pub version_update: bool,
+    body: Arc<Mutex<Option<String>>>,
+}
 
 #[async_trait]
-impl HttpHandler for LocalFileHttpHandler {
+impl HttpHandler for LocalFileHttpHandlerForTest {
     async fn server_sdk_toggles(
         &self,
         TypedHeader(SdkAuthorization(_sdk_key)): TypedHeader<SdkAuthorization>,
     ) -> Result<Response, FPServerError> {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("resources/fixtures/repo.json");
-        let body = fs::read_to_string(path).unwrap();
+        let mut lock = self.body.lock();
+        let body = match &*lock {
+            None => {
+                let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                path.push("resources/fixtures/repo.json");
+                let body = fs::read_to_string(path).unwrap();
+                *lock = Some(body.clone());
+                body
+            }
+            Some(body) => body.clone(),
+        };
+
+        if self.version_update {
+            // SAFETY: json is valid
+            let mut repo: Repository = serde_json::from_str(&body).unwrap();
+            let version = repo.version.unwrap_or_default();
+            repo.version = Some(version + 1);
+            // SAFETY: repo charset valid
+            *lock = Some(serde_json::to_string(&repo).unwrap());
+        }
+
         Ok((
             StatusCode::OK,
             [(header::CONTENT_TYPE, "application/json")],
@@ -289,7 +312,7 @@ impl HttpHandler for LocalFileHttpHandler {
 }
 
 #[async_trait]
-impl EventHandler for LocalFileHttpHandler {
+impl EventHandler for LocalFileHttpHandlerForTest {
     async fn handle_events(
         &self,
         _sdk_key: String,

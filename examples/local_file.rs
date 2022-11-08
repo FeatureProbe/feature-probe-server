@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use feature_probe_server::{
     base::ServerConfig,
-    http::{serve_http, FpHttpHandler, LocalFileHttpHandler},
+    http::{serve_http, FpHttpHandler, LocalFileHttpHandlerForTest},
     repo::SdkRepository,
 };
 
@@ -14,9 +14,9 @@ use feature_probe_server_sdk::Url;
 async fn main() {
     // mock fp api
     let api_port = 9991;
-    tokio::spawn(serve_http::<LocalFileHttpHandler>(
+    tokio::spawn(serve_http::<LocalFileHttpHandlerForTest>(
         api_port,
-        LocalFileHttpHandler {},
+        LocalFileHttpHandlerForTest::default(),
     ));
 
     let server_sdk_key = "server-sdk-key1".to_owned();

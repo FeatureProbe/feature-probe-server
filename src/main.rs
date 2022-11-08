@@ -144,7 +144,7 @@ pub fn init_log() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http::LocalFileHttpHandler;
+    use crate::http::LocalFileHttpHandlerForTest;
 
     #[tokio::test]
     async fn test_main() {
@@ -172,13 +172,12 @@ mod tests {
 
         let server_config = server_config.unwrap();
         let r = start(server_config).await;
-        log::info!("test_main"); // trigger log format
         assert!(r.is_ok());
     }
 
     fn setup_mock_api(port: u16) {
-        let mock_feature_probe_api = LocalFileHttpHandler {};
-        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandler>(
+        let mock_feature_probe_api = LocalFileHttpHandlerForTest::default();
+        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandlerForTest>(
             port,
             mock_feature_probe_api,
         ));

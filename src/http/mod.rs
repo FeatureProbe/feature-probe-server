@@ -16,7 +16,7 @@ use feature_probe_event::collector::{post_events, EventHandler};
 use feature_probe_server_sdk::SdkAuthorization;
 #[cfg(feature = "unstable")]
 use feature_probe_server_sdk::{Segment, Toggle};
-pub use handler::{FpHttpHandler, HttpHandler, LocalFileHttpHandler};
+pub use handler::{FpHttpHandler, HttpHandler, LocalFileHttpHandlerForTest};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -180,7 +180,7 @@ pub fn cors_headers() -> [(HeaderName, &'static str); 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{handler::LocalFileHttpHandler, *};
+    use super::{handler::LocalFileHttpHandlerForTest, *};
     #[cfg(feature = "realtime")]
     use crate::realtime::RealtimeSocket;
     use crate::{base::ServerConfig, repo::SdkRepository};
@@ -250,8 +250,8 @@ mod tests {
     #[tokio::test]
     async fn test_server_sdk_toggles() {
         let port = 9004;
-        let handler = LocalFileHttpHandler {};
-        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandler>(
+        let handler = LocalFileHttpHandlerForTest::default();
+        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandlerForTest>(
             port, handler,
         ));
         tokio::time::sleep(Duration::from_millis(100)).await; // wait port listen
@@ -397,8 +397,8 @@ mod tests {
     }
 
     async fn setup_mock_api(port: u16) {
-        let mock_feature_probe_api = LocalFileHttpHandler {};
-        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandler>(
+        let mock_feature_probe_api = LocalFileHttpHandlerForTest::default();
+        tokio::spawn(crate::http::serve_http::<LocalFileHttpHandlerForTest>(
             port,
             mock_feature_probe_api,
         ));
