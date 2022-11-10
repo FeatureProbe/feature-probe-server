@@ -18,7 +18,7 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["realtime"]
 unstable = []
 realtime = ["socketio-rs"]
 
@@ -50,7 +50,7 @@ tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ] }
 url = "2.3"
-socketio-rs = { optional = true, version = "0.1.0" }
+socketio-rs = { optional = true, version = "0.1.1" }
 feature-probe-server-sdk = { version = "1.2.6", features = [
   "internal",
   "use_tokio",
