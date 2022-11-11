@@ -1,13 +1,12 @@
-use crate::base::ServerConfig;
 #[cfg(feature = "realtime")]
 use crate::realtime::RealtimeSocket;
 use crate::FPServerError;
+use crate::{base::ServerConfig, secrets::SecretMapping};
 use feature_probe_server_sdk::{EvalDetail, FPConfig, FPUser, FeatureProbe as FPClient, Url};
 #[cfg(feature = "unstable")]
 use feature_probe_server_sdk::{Segment, Toggle};
 use parking_lot::RwLock;
 use reqwest::Method;
-use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use tracing::{debug, error, info};
@@ -15,12 +14,6 @@ use tracing::{debug, error, info};
 #[derive(Debug, Clone)]
 pub struct SdkRepository {
     inner: Arc<Inner>,
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-struct SecretMapping {
-    pub version: u128,
-    pub mapping: HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -71,16 +64,13 @@ impl SdkRepository {
 
     pub fn secret_keys(&self) -> HashMap<String, String> {
         let secret_mapping = self.inner.secret_mapping.read();
-        secret_mapping.mapping.clone()
+        secret_mapping.mapping_clone()
     }
 
     pub fn sync(&self, client_sdk_key: String, server_sdk_key: String, version: u128) {
         self.inner.sync(&server_sdk_key);
         let mut secret_mapping = self.inner.secret_mapping.write();
-        secret_mapping.version = version;
-        (*secret_mapping)
-            .mapping
-            .insert(client_sdk_key, server_sdk_key);
+        secret_mapping.insert(client_sdk_key, server_sdk_key, version);
     }
 
     pub fn sync_with(&self, keys_url: Url) {
@@ -114,10 +104,7 @@ impl SdkRepository {
                         Ok(body) => match serde_json::from_str::<SecretMapping>(&body) {
                             Err(e) => error!("sync_secret_keys json error: {}", e),
                             Ok(r) => {
-                                debug!(
-                                    "sync_secret_keys success. version: {:?}, mapping: {:?}",
-                                    r.version, r.mapping
-                                );
+                                debug!("sync_secret_keys success. version: {:?}", r.version(),);
                                 inner.update_mapping(r);
                             }
                         },
@@ -130,15 +117,10 @@ impl SdkRepository {
 
     pub fn server_sdk_repo_string(&self, server_sdk_key: &str) -> Result<String, FPServerError> {
         let secret_mapping = self.inner.secret_mapping.read();
-        if secret_mapping.version == 0 {
+        if secret_mapping.version() == 0 {
             return Err(FPServerError::NotReady(server_sdk_key.to_string()));
         }
-        let server_sdk_keys: &[String] = &secret_mapping
-            .mapping
-            .clone()
-            .into_values()
-            .collect::<Vec<String>>();
-        if !server_sdk_keys.contains(&server_sdk_key.to_string()) {
+        if !secret_mapping.contains_server_sdk_key(server_sdk_key) {
             return Err(FPServerError::NotFound(server_sdk_key.to_string()));
         }
         match self.inner.repo_string(server_sdk_key) {
@@ -153,10 +135,10 @@ impl SdkRepository {
         user: &FPUser,
     ) -> Result<String, FPServerError> {
         let secret_mapping = self.inner.secret_mapping.read();
-        if secret_mapping.version == 0 {
+        if secret_mapping.version() == 0 {
             return Err(FPServerError::NotReady(client_sdk_key.to_string()));
         }
-        let server_sdk_key = match secret_mapping.mapping.get(client_sdk_key) {
+        let server_sdk_key = match secret_mapping.server_sdk_key(client_sdk_key) {
             Some(sdk_key) => sdk_key,
             None => return Err(FPServerError::NotFound(client_sdk_key.to_string())),
         };
@@ -177,28 +159,31 @@ impl Inner {
             let sdks = self.sdk_clients.read();
             !sdks.contains_key(server_sdk_key)
         };
-        if should_sync {
-            let mut mut_sdks = self.sdk_clients.write();
-            let config = FPConfig {
-                server_sdk_key: server_sdk_key.to_owned(),
-                remote_url: Url::parse("http://nouse.com").unwrap(),
-                toggles_url: Some(self.server_config.toggles_url.clone()),
-                refresh_interval: self.server_config.refresh_interval,
-                http_client: Some(self.http_client.clone()),
-                ..Default::default()
-            };
-            info!("{:?} added", server_sdk_key);
 
-            #[cfg(feature = "realtime")]
-            {
-                let mut client = FPClient::new(config);
-                self.setup_notify(server_sdk_key, &mut client);
-                let _ = &mut_sdks.insert(server_sdk_key.to_owned(), client);
-            }
-
-            #[cfg(not(feature = "realtime"))]
-            let _ = &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
+        if !should_sync {
+            return;
         }
+
+        let mut mut_sdks = self.sdk_clients.write();
+        let config = FPConfig {
+            server_sdk_key: server_sdk_key.to_owned(),
+            remote_url: Url::parse("http://nouse.com").unwrap(),
+            toggles_url: Some(self.server_config.toggles_url.clone()),
+            refresh_interval: self.server_config.refresh_interval,
+            http_client: Some(self.http_client.clone()),
+            ..Default::default()
+        };
+        info!("{:?} added", server_sdk_key);
+
+        #[cfg(feature = "realtime")]
+        {
+            let mut client = FPClient::new(config);
+            self.setup_notify(server_sdk_key, &mut client);
+            let _ = &mut_sdks.insert(server_sdk_key.to_owned(), client);
+        }
+
+        #[cfg(not(feature = "realtime"))]
+        let _ = &mut_sdks.insert(server_sdk_key.to_owned(), FPClient::new(config));
     }
 
     pub fn remove_client(&self, server_sdk_key: &str) {
@@ -209,14 +194,14 @@ impl Inner {
     pub fn update_clients(&self) {
         let secret_mapping = self.secret_mapping.read();
         let clients = self.sdk_clients.read().clone();
-        if secret_mapping.version > 0 {
-            let mut keys = vec![];
-            for server_sdk_key in secret_mapping.mapping.values() {
+        if secret_mapping.version() > 0 {
+            let server_sdk_keys = secret_mapping.server_sdk_keys();
+            for server_sdk_key in &server_sdk_keys {
                 self.sync(server_sdk_key);
-                keys.push(server_sdk_key.to_string());
             }
+
             for server_sdk_key in clients.keys() {
-                if !keys.contains(server_sdk_key) {
+                if !server_sdk_keys.contains(&server_sdk_key) {
                     info!("{:?} removed.", server_sdk_key);
                     self.remove_client(server_sdk_key);
                 }
@@ -225,11 +210,10 @@ impl Inner {
     }
 
     pub fn update_mapping(&self, new: SecretMapping) {
-        let version = self.secret_mapping.read().version;
-        if new.version > version {
+        let version = self.secret_mapping.read().version();
+        if new.version() > version {
             let mut secret_mapping = self.secret_mapping.write();
-            secret_mapping.version = new.version;
-            secret_mapping.mapping = new.mapping;
+            secret_mapping.update_mapping(new)
         }
     }
 
@@ -237,13 +221,18 @@ impl Inner {
     fn setup_notify(&self, server_sdk_key: &str, client: &mut FPClient) {
         let sdk_key = server_sdk_key.to_owned();
         let realtime_socket = self.realtime_socket.clone();
+        let client_sdk_key = {
+            let mapping = self.secret_mapping.read();
+            mapping.client_sdk_key(server_sdk_key).cloned()
+        };
 
         client.set_update_callback(Box::new(move |_old, _new| {
-            let key = sdk_key.clone();
+            let server_key = sdk_key.clone();
+            let client_key = client_sdk_key.clone();
             let socket = realtime_socket.clone();
             tokio::spawn(async move {
                 socket
-                    .notify_sdk(key, "update", serde_json::json!(""))
+                    .notify_sdk(server_key, client_key, "update", serde_json::json!(""))
                     .await;
             });
         }));
@@ -317,18 +306,16 @@ mod tests {
         assert_eq!(secret_keys.get(&client_sdk_key), Some(&server_sdk_key));
 
         // test mapping sync
-        let mut new = SecretMapping {
-            version: 2,
-            ..Default::default()
-        };
-        new.mapping
-            .insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
+
+        let mut mapping = HashMap::new();
+        mapping.insert(client_sdk_key2.to_string(), server_sdk_key2.to_string());
+        let new = SecretMapping::new(2, mapping);
         let clients = { (repository.inner.sdk_clients.read()).clone() };
         assert!(clients.contains_key(&server_sdk_key));
         repository.inner.update_mapping(new);
         let secret_mapping = { (repository.inner.secret_mapping.read()).clone() };
-        let secret = &secret_mapping.mapping.get(&client_sdk_key2);
-        assert_eq!(secret_mapping.version, 2);
+        let secret = &secret_mapping.server_sdk_key(&client_sdk_key2);
+        assert_eq!(secret_mapping.version(), 2);
         assert_eq!(secret.unwrap(), &server_sdk_key2.to_string());
 
         // test clients sync
@@ -354,7 +341,7 @@ mod tests {
         let r = serde_json::from_str::<Repository>(&repo_string.unwrap()).unwrap();
         assert!(r == repo_from_test_file());
         let secret_keys = repository.secret_keys();
-        let secret_keys_version = repository.inner.secret_mapping.read().version;
+        let secret_keys_version = repository.inner.secret_mapping.read().version();
         assert!(secret_keys_version == 1);
         assert!(secret_keys.len() == 1);
         assert!(secret_keys.get(&client_sdk_key) == Some(&server_sdk_key));

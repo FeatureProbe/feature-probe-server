@@ -23,6 +23,7 @@ mod http;
 #[cfg(feature = "realtime")]
 mod realtime;
 mod repo;
+mod secrets;
 
 #[tokio::main]
 async fn main() -> Result<()> {

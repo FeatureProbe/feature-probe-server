@@ -33,9 +33,27 @@ impl RealtimeSocket {
         Self { server, port }
     }
 
-    pub async fn notify_sdk(&self, sdk_key: String, event: &str, data: serde_json::Value) {
-        trace!("notify_sdk {} {} {:?}", sdk_key, event, data);
-        self.server.emit_to("/", vec![&sdk_key], event, data).await
+    pub async fn notify_sdk(
+        &self,
+        server_sdk_key: String,
+        client_sdk_key: Option<String>,
+        event: &str,
+        data: serde_json::Value,
+    ) {
+        trace!(
+            "notify_sdk {} {:?} {} {:?}",
+            server_sdk_key,
+            client_sdk_key,
+            event,
+            data
+        );
+
+        let mut keys: Vec<&str> = vec![&server_sdk_key];
+        if let Some(client_sdk_key) = &client_sdk_key {
+            keys.push(client_sdk_key);
+        }
+
+        self.server.emit_to("/", keys, event, data).await
     }
 
     fn register(payload: Option<Payload>, socket: ServerSocket) -> SocketCallback {
