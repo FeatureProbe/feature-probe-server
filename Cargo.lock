@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "feature-probe-server"
-version = "1.3.7"
+version = "1.3.8"
 dependencies = [
  "anyhow",
  "axum",
@@ -1576,9 +1576,9 @@ dependencies = [
 
 [[package]]
 name = "socketio-rs"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2b479d0dd5cc24a2f1ef84aacd91a8186afb9bf098111f787ba509001c054cf"
+checksum = "c210193c57dac41c1118467207e1f74608487f21f3a44e3f829048e1f20fa6cd"
 dependencies = [
  "async-stream",
  "backoff",
