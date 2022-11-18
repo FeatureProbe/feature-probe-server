@@ -330,15 +330,16 @@ dependencies = [
 
 [[package]]
 name = "engineio-rs"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b09db0b3c53c49cd4eff65ad6cdd86ee287013aaa4114cd9bfc9a5a10df9106"
+checksum = "8e1d638b0aef7e3a4ab1a992da832cf0fa3ff0cab6703fcf35c6b610bbb6597e"
 dependencies = [
  "adler32",
  "async-stream",
  "async-trait",
  "base64",
  "bytes",
+ "dashmap",
  "futures-util",
  "http",
  "httparse",
@@ -1576,14 +1577,15 @@ dependencies = [
 
 [[package]]
 name = "socketio-rs"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c210193c57dac41c1118467207e1f74608487f21f3a44e3f829048e1f20fa6cd"
+checksum = "2efe9565e0a81fbb4648fa61db8fca95085867e7878b1d0e8604a42a2eed744a"
 dependencies = [
  "async-stream",
  "backoff",
  "base64",
  "bytes",
+ "dashmap",
  "engineio-rs",
  "futures-util",
  "parking_lot",
