@@ -1577,9 +1577,9 @@ dependencies = [
 
 [[package]]
 name = "socketio-rs"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8571050615bac7f9cffb5e2f74f1947efa22304ff93c1d2ec8a10b2f7f0407ab"
+checksum = "c60b864fa09bca26848d762ebb95322337d29670bba53192f528a0c444b816b8"
 dependencies = [
  "async-stream",
  "backoff",
