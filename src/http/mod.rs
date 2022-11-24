@@ -428,10 +428,12 @@ mod tests {
             server_port: listen_port,
             #[cfg(feature = "realtime")]
             realtime_port: listen_port + 100,
+            #[cfg(feature = "realtime")]
+            realtime_path: "/server/realtime".to_owned(),
         };
 
         #[cfg(feature = "realtime")]
-        let rs = RealtimeSocket::serve(config.realtime_port);
+        let rs = RealtimeSocket::serve(config.realtime_port, &config.realtime_path);
 
         let repo = SdkRepository::new(
             config,

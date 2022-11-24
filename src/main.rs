@@ -58,7 +58,8 @@ async fn start(server_config: ServerConfig) -> Result<()> {
     #[cfg(feature = "realtime")]
     let realtime_socket = {
         let realtime_port = server_config.realtime_port;
-        RealtimeSocket::serve(realtime_port)
+        let realtime_path = &server_config.realtime_path;
+        RealtimeSocket::serve(realtime_port, realtime_path)
     };
 
     let server_port = server_config.server_port;

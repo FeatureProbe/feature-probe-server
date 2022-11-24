@@ -12,16 +12,19 @@ type SocketCallback = Pin<Box<dyn Future<Output = ()> + Send>>;
 pub struct RealtimeSocket {
     server: Arc<Server>,
     port: u16,
+    // this path shoule be the same as gateway
+    // if nginx forward to {host}/{path}, so the PATH should be {path}
+    path: Arc<String>,
 }
 
 impl RealtimeSocket {
-    pub fn serve(port: u16) -> Self {
+    pub fn serve(port: u16, path: &str) -> Self {
         info!("serve_socektio on port {}", port);
         let callback =
             |payload: Option<Payload>, socket: ServerSocket, _| Self::register(payload, socket);
 
         let server = ServerBuilder::new(port)
-            .on("/", "register", callback)
+            .on(path, "register", callback)
             .build();
 
         let server_clone = server.clone();
@@ -30,7 +33,9 @@ impl RealtimeSocket {
             server_clone.serve().await;
         });
 
-        Self { server, port }
+        let path = Arc::new(path.to_owned());
+
+        Self { server, port, path }
     }
 
     pub async fn notify_sdk(
@@ -53,7 +58,7 @@ impl RealtimeSocket {
             keys.push(client_sdk_key);
         }
 
-        self.server.emit_to("/", keys, event, data).await
+        self.server.emit_to(&self.path, keys, event, data).await
     }
 
     fn register(payload: Option<Payload>, socket: ServerSocket) -> SocketCallback {

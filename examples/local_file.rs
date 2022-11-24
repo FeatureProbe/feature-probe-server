@@ -41,10 +41,12 @@ async fn main() {
         server_port: 9000,
         #[cfg(feature = "realtime")]
         realtime_port: 9100,
+        #[cfg(feature = "realtime")]
+        realtime_path: "/server/realtime".to_owned(),
     };
 
     #[cfg(feature = "realtime")]
-    let realtime_socket = RealtimeSocket::serve(config.realtime_port);
+    let realtime_socket = RealtimeSocket::serve(config.realtime_port, &config.realtime_path);
     let repo = SdkRepository::new(
         config,
         #[cfg(feature = "realtime")]

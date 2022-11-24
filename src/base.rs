@@ -36,6 +36,8 @@ pub struct ServerConfig {
     pub server_port: u16,
     #[cfg(feature = "realtime")]
     pub realtime_port: u16,
+    #[cfg(feature = "realtime")]
+    pub realtime_path: String,
 }
 
 impl ServerConfig {
@@ -120,6 +122,12 @@ impl ServerConfig {
             Ok(port) => port as u16,
         };
 
+        #[cfg(feature = "realtime")]
+        let realtime_path = match config.get_string("realtime_path") {
+            Err(_) => "/server/realtime".to_owned(), // default port
+            Ok(path) => path,
+        };
+
         Ok(ServerConfig {
             toggles_url,
             events_url,
@@ -130,6 +138,8 @@ impl ServerConfig {
             server_port,
             #[cfg(feature = "realtime")]
             realtime_port,
+            #[cfg(feature = "realtime")]
+            realtime_path,
         })
     }
 }
