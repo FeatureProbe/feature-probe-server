@@ -118,7 +118,7 @@ impl ServerConfig {
 
         #[cfg(feature = "realtime")]
         let realtime_port = match config.get_int("realtime_port") {
-            Err(_) => 9090, // default port
+            Err(_) => 9100, // default port
             Ok(port) => port as u16,
         };
 

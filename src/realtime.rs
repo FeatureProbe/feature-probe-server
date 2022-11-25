@@ -65,7 +65,7 @@ impl RealtimeSocket {
         async move {
             info!("socketio recv {:?}", payload);
             if let Some(Payload::Json(value)) = payload {
-                match value.get("sdk_key") {
+                match value.get("key") {
                     Some(Value::String(sdk_key)) => socket.join(vec![sdk_key]).await,
                     _ => {
                         warn!("unkown register payload")
