@@ -15,7 +15,8 @@ use crate::FPServerError;
 use feature_probe_event::collector::{post_events, EventHandler};
 use feature_probe_server_sdk::SdkAuthorization;
 #[cfg(feature = "unstable")]
-use feature_probe_server_sdk::{Segment, Toggle};
+use feature_probe_server_sdk::Segment;
+use feature_probe_server_sdk::Toggle;
 pub use handler::{FpHttpHandler, HttpHandler, LocalFileHttpHandlerForTest};
 use serde::Deserialize;
 use serde_json::json;
@@ -35,14 +36,14 @@ where
         .route("/api/server-sdk/toggles", get(server_sdk_toggles::<T>))
         .route("/api/events", post(post_events::<T>).options(client_cors))
         .route("/internal/all_secrets", get(all_secrets::<T>)) // not for public network
+        .route("/internal/update_toggles", post(update_toggles::<T>))
         .layer(Extension(handler))
         .fallback(handler_404.into_service());
 
     #[cfg(feature = "unstable")]
     let app = app
-        .route("/api/server/toggles", post(update_toggles::<T>))
-        .route("/api/server/segments", post(update_segments::<T>))
-        .route("/api/server/check_secrets", post(check_secrets::<T>));
+        .route("/internal/server/segments", post(update_segments::<T>))
+        .route("/intelnal/server/check_secrets", post(check_secrets::<T>));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     axum::Server::bind(&addr)
@@ -76,7 +77,6 @@ where
     handler.server_sdk_toggles(sdk_key).await
 }
 
-#[cfg(feature = "unstable")]
 async fn update_toggles<T>(
     params: Json<ToggleUpdateParams>,
     Extension(handler): Extension<T>,
@@ -131,11 +131,14 @@ pub struct ClientParams {
     user: String,
 }
 
-#[cfg(feature = "unstable")]
+#[allow(unused)]
 #[derive(Debug, Deserialize)]
 pub struct ToggleUpdateParams {
     sdk_key: String,
+    #[serde(default)]
     toggles: HashMap<String, Toggle>,
+    #[serde(default)]
+    version: Option<String>,
 }
 
 #[cfg(feature = "unstable")]
@@ -189,6 +192,13 @@ mod tests {
     use reqwest::{header::AUTHORIZATION, Client, Error, Method, Url};
     use serde_json::Value;
     use std::{fs, path::PathBuf, sync::Arc, time::Duration};
+
+    #[test]
+    fn deserialize_toggle_udpate_param() {
+        let toggle_update_param = r#"{"sdk_key": "key1"}"#;
+        let p: ToggleUpdateParams = serde_json::from_str(toggle_update_param).unwrap();
+        assert_eq!(p.sdk_key, "key1");
+    }
 
     #[tokio::test]
     async fn test_fp_server_connect_fp_api() {

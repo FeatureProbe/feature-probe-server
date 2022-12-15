@@ -2,7 +2,9 @@
 use crate::realtime::RealtimeSocket;
 use crate::FPServerError;
 use crate::{base::ServerConfig, secrets::SecretMapping};
-use feature_probe_server_sdk::{EvalDetail, FPConfig, FPUser, FeatureProbe as FPClient, Url};
+use feature_probe_server_sdk::{
+    EvalDetail, FPConfig, FPUser, FeatureProbe as FPClient, SyncType, Url,
+};
 #[cfg(feature = "unstable")]
 use feature_probe_server_sdk::{Segment, Toggle};
 use parking_lot::RwLock;
@@ -145,6 +147,16 @@ impl SdkRepository {
         self.inner.all_evaluated_string(server_sdk_key, user)
     }
 
+    pub fn client_sync_now(&self, sdk_key: &str, t: SyncType) -> Result<String, FPServerError> {
+        let sdk_clients = self.inner.sdk_clients.write();
+        let client = match sdk_clients.get(sdk_key) {
+            Some(client) => client,
+            None => return Err(FPServerError::NotFound(sdk_key.to_string())),
+        };
+        client.sync_now(t);
+        Ok(sdk_key.to_string())
+    }
+
     #[cfg(test)]
     #[cfg(feature = "unstable")]
     fn sdk_client(&self, sdk_key: &str) -> Option<FPClient> {
@@ -226,7 +238,7 @@ impl Inner {
             mapping.client_sdk_key(server_sdk_key).cloned()
         };
 
-        client.set_update_callback(Box::new(move |_old, _new| {
+        client.set_update_callback(Box::new(move |_old, _new, _type| {
             let server_key = sdk_key.clone();
             let client_key = client_sdk_key.clone();
             let socket = realtime_socket.clone();
@@ -323,6 +335,9 @@ mod tests {
         let clients = { (repository.inner.sdk_clients.read()).clone() };
         assert!(!clients.contains_key(&server_sdk_key));
         assert!(clients.contains_key(&server_sdk_key2));
+
+        let sdk_key = repository.client_sync_now(&server_sdk_key2, SyncType::Polling);
+        assert!(sdk_key.is_ok());
     }
 
     #[tokio::test]

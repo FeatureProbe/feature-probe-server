@@ -1,6 +1,6 @@
-use super::{cors_headers, ClientParams, SdkAuthorization};
+use super::{cors_headers, ClientParams, SdkAuthorization, ToggleUpdateParams};
 #[cfg(feature = "unstable")]
-use super::{SecretsParams, SegmentUpdateParams, ToggleUpdateParams};
+use super::{SecretsParams, SegmentUpdateParams};
 use crate::FPServerError::{NotFound, NotReady};
 use crate::{repo::SdkRepository, FPServerError};
 use axum::{
@@ -14,7 +14,7 @@ use feature_probe_event::{
     collector::{EventHandler, FPEventError},
     event::PackedData,
 };
-use feature_probe_server_sdk::{FPUser, Repository, Url};
+use feature_probe_server_sdk::{FPUser, Repository, SyncType, Url};
 use parking_lot::Mutex;
 use reqwest::{
     header::{self, AUTHORIZATION, USER_AGENT},
@@ -42,7 +42,6 @@ pub trait HttpHandler {
         TypedHeader(SdkAuthorization(sdk_key)): TypedHeader<SdkAuthorization>,
     ) -> Result<Response, FPServerError>;
 
-    #[cfg(feature = "unstable")]
     async fn update_toggles(
         &self,
         Json(params): Json<ToggleUpdateParams>,
@@ -119,6 +118,25 @@ impl HttpHandler for FpHttpHandler {
                     .into_response()),
                 NotFound(_) => Ok((
                     StatusCode::OK,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    "{}",
+                )
+                    .into_response()),
+                _ => Err(e),
+            },
+        }
+    }
+
+    async fn update_toggles(
+        &self,
+        Json(params): Json<ToggleUpdateParams>,
+    ) -> Result<Response, FPServerError> {
+        let sdk_key = params.sdk_key;
+        match self.repo.client_sync_now(&sdk_key, SyncType::Realtime) {
+            Ok(_sdk_key) => Ok((StatusCode::OK, cors_headers(), "{}").into_response()),
+            Err(e) => match e {
+                NotFound(_) => Ok((
+                    StatusCode::BAD_REQUEST,
                     [(header::CONTENT_TYPE, "application/json")],
                     "{}",
                 )
@@ -272,14 +290,17 @@ impl HttpHandler for LocalFileHttpHandlerForTest {
             .into_response())
     }
 
-    #[cfg(feature = "unstable")]
     async fn update_toggles(
         &self,
         Json(_params): Json<ToggleUpdateParams>,
     ) -> Result<Response, FPServerError> {
-        let status = StatusCode::OK;
-        let body = "";
-        Ok((status, body).into_response())
+        let body = "{}".to_owned();
+        Ok((
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/json")],
+            body,
+        )
+            .into_response())
     }
 
     #[cfg(feature = "unstable")]
