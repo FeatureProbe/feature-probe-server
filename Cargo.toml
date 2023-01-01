@@ -28,7 +28,7 @@ vergen = "7"
 [dependencies]
 anyhow = "1.0"
 axum = { version = "0.5", features = ["headers"] }
-axum-extra = { version = "0.2", features = ["typed-routing"] }
+axum-extra = { version = "0.4", features = ["typed-routing"] }
 base64 = "0.13"
 config = "0.13"
 futures = "0.3"
