@@ -7,11 +7,13 @@ RUN update-ca-certificates
 
 WORKDIR /app
 COPY . /app
+WORKDIR /app/server
 
 RUN rustc -V
 RUN cargo build --release --verbose
 
 FROM debian:buster-slim
-COPY --from=build /app/target/release/feature_probe_server .
+COPY --from=build /app/server/target/release/feature_probe_server .
 
 CMD [ "./feature_probe_server" ]
+
