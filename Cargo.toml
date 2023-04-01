@@ -23,7 +23,7 @@ unstable = []
 realtime = ["socketio-rs"]
 
 [build-dependencies]
-vergen = "7"
+vergen = "8"
 
 [dependencies]
 anyhow = "1.0"
